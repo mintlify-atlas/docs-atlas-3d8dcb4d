@@ -1,0 +1,149 @@
+---
+title: Introduction
+description: Learn about the FalconAlert API - a comprehensive fraud reporting and moderation platform built with NestJS
+---
+
+# Welcome to FalconAlert API
+
+FalconAlert is a powerful NestJS-based backend API for fraud reporting and community moderation. It provides a complete solution for users to report fraudulent websites, moderate content, and protect communities from online scams.
+
+## What is FalconAlert?
+
+FalconAlert enables users to:
+- **Report fraudulent websites** with detailed information and evidence
+- **Upvote reports** to increase visibility of dangerous sites
+- **Track report status** through pending, approved, and rejected states
+- **Receive real-time notifications** via WebSocket connections
+- **Manage user profiles** with customizable settings
+- **Moderate content** through an admin dashboard
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    Complete user registration, authentication, and profile management with JWT-based security
+  </Card>
+  
+  <Card title="Fraud Reports" icon="shield-halved">
+    Create, update, and categorize fraud reports with image uploads and status tracking
+  </Card>
+  
+  <Card title="Community Protection" icon="heart">
+    Upvote system to protect people from fraudulent sites and increase report visibility
+  </Card>
+  
+  <Card title="Real-time Updates" icon="bolt">
+    WebSocket gateway for instant report notifications and updates
+  </Card>
+  
+  <Card title="Admin Dashboard" icon="chart-line">
+    Comprehensive dashboard with analytics, user management, and report moderation
+  </Card>
+  
+  <Card title="File Uploads" icon="image">
+    Support for profile pictures and report evidence images stored locally
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+FalconAlert is built on modern, reliable technologies:
+
+- **Framework**: NestJS 11.x - A progressive Node.js framework
+- **Language**: TypeScript - Type-safe development
+- **Database**: MySQL 8.0+ via mysql2 driver
+- **Authentication**: JWT with access and refresh tokens
+- **API Documentation**: Swagger UI at `/docs`
+- **Validation**: class-validator and class-transformer
+- **Real-time**: Socket.IO for WebSocket connections
+
+### Core Modules
+
+The API is organized into feature modules:
+
+```
+src/
+├── auth/              # JWT authentication & token management
+├── users/             # User registration, profiles, settings
+├── reports/           # Fraud report CRUD operations
+├── categories/        # Report categorization
+├── upvotes/          # Community protection system
+├── notifications/    # Real-time notification system
+├── admin/            # Admin dashboard & moderation
+├── dashboard/        # Analytics and statistics
+├── images/           # File upload handling
+└── common/           # Shared guards, interfaces, utilities
+```
+
+## Authentication System
+
+FalconAlert uses a dual-token JWT authentication system:
+
+- **Access Tokens**: Short-lived (1 hour) tokens for API requests
+- **Refresh Tokens**: Long-lived (7 days) tokens for renewing access
+- **Role-based Access**: Separate endpoints for mobile (role_id: 1) and web (role_id: 2) users
+
+All protected endpoints require a Bearer token in the Authorization header:
+
+```bash
+Authorization: Bearer <access_token>
+```
+
+## API Documentation
+
+Once the server is running, you can explore the interactive API documentation:
+
+- **Swagger UI**: `http://localhost:3000/docs`
+- **OpenAPI Spec**: Available at `/swagger.json`
+
+The documentation includes:
+- All available endpoints
+- Request/response schemas
+- Example payloads
+- Authentication requirements
+- Error responses
+
+<Note>
+The API runs on port 3000 by default, configurable via the `PORT` environment variable.
+</Note>
+
+## Response Format
+
+All API responses follow consistent patterns:
+
+**Success Response:**
+```json
+{
+  "id": 1,
+  "title": "Fraudulent website detected",
+  "status_id": 1
+}
+```
+
+**Error Response:**
+```json
+{
+  "message": "User not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+## Getting Help
+
+If you encounter issues or have questions:
+
+- Check the [Quickstart Guide](/quickstart) for setup instructions
+- Review the [Authentication Guide](/authentication) for JWT implementation
+- Explore the Swagger documentation at `/docs`
+- Review the source code on GitHub
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started with FalconAlert in minutes
+  </Card>
+  
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Learn how to authenticate API requests
+  </Card>
+</CardGroup>

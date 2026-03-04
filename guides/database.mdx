@@ -1,0 +1,309 @@
+---
+title: 'Database Configuration'
+description: 'MySQL database setup, schema, and connection management'
+---
+
+## Database Overview
+
+FalconAlert uses **MySQL 8.0+** as its primary database, connected via the `mysql2` library with connection pooling for optimal performance.
+
+## Environment Variables
+
+Configure your database connection in the `.env` file:
+
+```bash
+MYSQL_HOST="localhost"
+MYSQL_PORT=3306
+MYSQL_USER="your_username"
+MYSQL_PASSWORD="your_password"
+MYSQL_DB="Ofraud"
+```
+
+<Note>
+  The database name `Ofraud` is the default schema name. You can change it, but make sure to update the SQL backup accordingly.
+</Note>
+
+## Database Connection
+
+The database connection is managed by the `DbService` in `src/db/db.service.ts`:
+
+```typescript src/db/db.service.ts
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Pool, createPool } from 'mysql2/promise';
+
+@Injectable()
+export class DbService implements OnModuleInit, OnModuleDestroy {
+  private pool: Pool;
+
+  onModuleInit(): void {
+    this.pool = createPool({
+      host: process.env.MYSQL_HOST,
+      user: process.env.MYSQL_USER,
+      password: process.env.MYSQL_PASSWORD,
+      database: process.env.MYSQL_DB,
+    });
+  }
+
+  onModuleDestroy() {
+    void this.pool.end();
+  }
+
+  getPool(): Pool {
+    return this.pool;
+  }
+}
+```
+
+### Connection Pooling
+
+The service uses **connection pooling** to manage database connections efficiently. The pool is:
+
+- Created when the module initializes (`onModuleInit`)
+- Automatically managed by mysql2
+- Properly closed when the application shuts down (`onModuleDestroy`)
+
+## Database Schema
+
+The database consists of 10 main tables that handle all application functionality.
+
+### Users Table
+
+```sql
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `username` varchar(20) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `salt` char(64) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `image_path` varchar(255) DEFAULT 'profile-pictures/default.jpg',
+  `role_id` int DEFAULT '1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `username` (`username`),
+  KEY `role_id` (`role_id`),
+  CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `role` (`id`) ON DELETE CASCADE
+);
+```
+
+Stores user information with:
+- Unique email and username constraints
+- Hashed passwords with salt
+- Profile picture paths
+- Role-based access control
+
+### Reports Table
+
+```sql
+CREATE TABLE `reports` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(100) NOT NULL,
+  `image` longtext,
+  `description` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` int NOT NULL DEFAULT '1',
+  `status_id` int DEFAULT NULL,
+  `report_url` varchar(100) DEFAULT NULL,
+  `is_anonymous` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `created_by` (`created_by`),
+  KEY `reports_status_FK` (`status_id`),
+  CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `reports_status_FK` FOREIGN KEY (`status_id`) REFERENCES `status` (`id`)
+);
+```
+
+Manages fraud reports with:
+- Title, description, and evidence images
+- URL of the fraudulent site
+- Anonymous posting option
+- Status tracking (pending, approved, rejected)
+- Timestamps for creation and updates
+
+### Categories Table
+
+```sql
+CREATE TABLE `categories` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(32) NOT NULL,
+  `description` text,
+  PRIMARY KEY (`id`)
+);
+```
+
+Default categories include:
+- Muebles (Furniture)
+- Ropa (Clothing)
+- Electrónica (Electronics)
+- Libros (Books)
+- Juguetes (Toys)
+- Deportes (Sports)
+
+### Report Categories (Junction Table)
+
+```sql
+CREATE TABLE `report_categories` (
+  `report_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`report_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `report_categories_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `report_categories_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+);
+```
+
+Enables many-to-many relationship between reports and categories.
+
+### Notifications Table
+
+```sql
+CREATE TABLE `notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `message` varchar(500) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by` int NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`created_by`),
+  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+```
+
+Stores user notifications for report status changes.
+
+### Upvotes Table
+
+```sql
+CREATE TABLE `upvotes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `report_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_vote` (`user_id`,`report_id`),
+  KEY `report_id` (`report_id`),
+  CONSTRAINT `upvotes_ibfk_1` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `upvotes_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+```
+
+Tracks report upvotes with unique constraint to prevent duplicate votes.
+
+### Status Table
+
+```sql
+CREATE TABLE `status` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `status` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+
+-- Default values
+INSERT INTO `status` VALUES 
+  (1,'pendiente'),
+  (2,'aprobada'),
+  (3,'rechazada');
+```
+
+### Role Table
+
+```sql
+CREATE TABLE `role` (
+  `id` int NOT NULL,
+  `role` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+
+-- Default roles
+INSERT INTO `role` VALUES 
+  (1,'admin'),
+  (2,'moderator'),
+  (3,'user'),
+  (4,'editor'),
+  (5,'guest');
+```
+
+## Database Setup
+
+<Steps>
+  <Step title="Create the database">
+    Create the MySQL database:
+
+    ```bash
+    mysql -u root -p
+    ```
+
+    ```sql
+    CREATE DATABASE Ofraud;
+    ```
+  </Step>
+
+  <Step title="Import the schema">
+    Import the provided backup file:
+
+    ```bash
+    mysql -u <username> -p Ofraud < backup.sql
+    ```
+
+    This creates all tables and inserts default data for categories, roles, and statuses.
+  </Step>
+
+  <Step title="Verify the import">
+    Check that all tables were created:
+
+    ```sql
+    USE Ofraud;
+    SHOW TABLES;
+    ```
+
+    You should see:
+    - categories
+    - configurations
+    - notifications
+    - report_categories
+    - reports
+    - role
+    - status
+    - upvotes
+    - user_settings
+    - users
+  </Step>
+</Steps>
+
+## Database Migrations
+
+Currently, the project uses SQL backup files for schema management. For future development, consider:
+
+- TypeORM migrations
+- Prisma migrations
+- Custom migration scripts
+
+<Warning>
+  Always backup your database before running migrations or schema changes.
+</Warning>
+
+## Connection Issues
+
+If you encounter connection errors:
+
+1. **Verify MySQL is running:**
+   ```bash
+   sudo systemctl status mysql
+   ```
+
+2. **Check credentials:**
+   Ensure your `.env` file has the correct username and password.
+
+3. **Test connection:**
+   ```bash
+   mysql -u <username> -p -h localhost
+   ```
+
+4. **Check firewall settings:**
+   Make sure port 3306 is accessible.
+
+5. **Review application logs:**
+   Connection errors will appear in the console when starting the application.

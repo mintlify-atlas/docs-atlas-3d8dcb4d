@@ -1,0 +1,155 @@
+---
+title: 'Setup Guide'
+description: 'Learn how to set up and run the FalconAlert API locally'
+---
+
+## Prerequisites
+
+Before setting up the project, make sure you have the following installed:
+
+- **Node.js** (v18 or higher recommended)
+- **npm** (comes with Node.js)
+- **MySQL** (8.0 or higher recommended)
+- A code editor like **VS Code**
+- Git installed
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the FalconAlert backend repository to your local machine:
+
+    ```bash
+    git clone https://github.com/4rt21/backend-proyecto.git
+    cd backend-proyecto
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    ### Key Dependencies
+
+    | Package | Purpose |
+    | -------- | -------- |
+    | `@nestjs/core` | NestJS framework core |
+    | `class-validator` | Validates data in requests |
+    | `mysql2` | Connects to the MySQL database |
+    | `@nestjs/jwt` | JWT authentication |
+    | `@nestjs/swagger` | API documentation |
+    | `@nestjs/websockets` | WebSocket support |
+    | `@aws-sdk/client-s3` | AWS S3 file uploads |
+  </Step>
+
+  <Step title="Set up the database">
+    Import the database schema using the provided backup file:
+
+    ```bash
+    mysql -u <username> -p Ofraud < backup.sql
+    ```
+
+    This will create all necessary tables including users, reports, categories, notifications, and more.
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env` file in the root directory:
+
+    ```bash
+    touch .env
+    ```
+
+    Add the following environment variables:
+
+    ```bash
+    MYSQL_HOST="localhost"
+    MYSQL_PORT=3306
+    MYSQL_USER="<your_user>"
+    MYSQL_PASSWORD="<your_password>"
+    MYSQL_DB="Ofraud"
+    PORT=3000
+    ```
+
+    <Note>
+      Replace `<your_user>` and `<your_password>` with your actual MySQL credentials.
+    </Note>
+  </Step>
+
+  <Step title="Start the server">
+    Run the development server:
+
+    ```bash
+    npm run start:dev
+    ```
+
+    Or for production:
+
+    ```bash
+    npm run start:prod
+    ```
+
+    The server will start on `http://localhost:3000` by default.
+  </Step>
+
+  <Step title="Access the API documentation">
+    Once the server is running, navigate to the Swagger UI:
+
+    ```
+    http://localhost:3000/docs
+    ```
+
+    This provides an interactive interface to explore and test all available endpoints.
+  </Step>
+</Steps>
+
+## Available Scripts
+
+The project includes several npm scripts for development:
+
+```json
+{
+  "start": "nest start",
+  "start:dev": "nest start --watch",
+  "start:debug": "nest start --debug --watch",
+  "start:prod": "node dist/main",
+  "build": "nest build",
+  "test": "jest",
+  "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
+}
+```
+
+## Project Structure
+
+```
+├── src/
+│   ├── auth/           # Authentication & JWT
+│   ├── users/          # User management
+│   ├── reports/        # Report CRUD operations
+│   ├── categories/     # Category management
+│   ├── notifications/  # Notification system
+│   ├── images/         # File upload handling
+│   ├── db/             # Database connection
+│   ├── admin/          # Admin operations
+│   ├── upvotes/        # Report voting system
+│   └── main.ts         # Application entry point
+├── public/
+│   ├── profile-pictures/
+│   └── report-pictures/
+├── backup.sql          # Database schema
+└── package.json
+```
+
+## Verification
+
+To verify your setup is working correctly:
+
+1. Check the server logs for any errors
+2. Visit `http://localhost:3000/docs` to see the Swagger documentation
+3. Test a simple endpoint like `GET /docs` to ensure the API is responding
+
+<Warning>
+  Make sure MySQL is running before starting the application, otherwise the connection will fail.
+</Warning>

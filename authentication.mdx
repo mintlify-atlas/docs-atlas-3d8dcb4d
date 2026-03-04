@@ -1,0 +1,562 @@
+---
+title: Authentication
+description: Learn how to authenticate with the FalconAlert API using JWT tokens, manage sessions, and secure your requests
+---
+
+# Authentication
+
+FalconAlert uses JWT (JSON Web Tokens) for stateless authentication. This guide covers the complete authentication flow, token management, and best practices.
+
+## Authentication Flow
+
+The API implements a dual-token authentication system:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    Client->>API: POST /auth/login (email, password, type)
+    API->>API: Validate credentials
+    API-->>Client: accessToken + refreshToken
+    Client->>API: GET /auth/profile (Bearer accessToken)
+    API-->>Client: User profile data
+    Note over Client,API: Access token expires after 1 hour
+    Client->>API: POST /auth/refresh (refreshToken)
+    API-->>Client: New accessToken + refreshToken
+```
+
+## Token Types
+
+FalconAlert uses two types of JWT tokens:
+
+### Access Token
+
+- **Purpose**: Authenticate API requests
+- **Lifetime**: 1 hour
+- **Payload**: Contains user profile information
+- **Usage**: Include in `Authorization` header for protected endpoints
+
+**Payload structure:**
+```typescript
+{
+  sub: "1",              // User ID
+  type: "access",
+  profile: {
+    id: "1",
+    email: "user@example.com",
+    name: "John Doe",
+    role_id: 1           // 1=mobile, 2=web/admin
+  },
+  iat: 1709550000,       // Issued at
+  exp: 1709553600        // Expires at
+}
+```
+
+### Refresh Token
+
+- **Purpose**: Obtain new access tokens
+- **Lifetime**: 7 days
+- **Payload**: Minimal user identifier
+- **Usage**: Send to `/auth/refresh` when access token expires
+
+**Payload structure:**
+```typescript
+{
+  sub: "1",              // User ID
+  type: "refresh",
+  iat: 1709550000,       // Issued at
+  exp: 1710154800        // Expires at (7 days)
+}
+```
+
+<Warning>
+  Tokens are signed with the secret `"supersecret"`. In production, use a strong, environment-specific secret stored in environment variables.
+</Warning>
+
+## Login Endpoint
+
+Authenticate a user and receive tokens.
+
+### Request
+
+```http
+POST /auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123",
+  "type": "mobile"  // or "web"
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| email | string | Yes | User's email address (must be valid email format) |
+| password | string | Yes | User's password |
+| type | enum | Yes | Login type: `"mobile"` (role_id=1) or `"web"` (role_id=2) |
+
+### Response
+
+<CodeGroup>
+```json Success (200)
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsInByb2ZpbGUiOnsiaWQiOiIxIiwiZW1haWwiOiJhcnR1cm9AZ21haWwuY29tIiwibmFtZSI6IkFydHVybyBVdHJpbGxhYSDDiURJVCIsInJvbGVfaWQiOjF9LCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTI5NjAxMX0.ECBWVGu-tXr7Shs9qvg9LMISOXtFQmp3R8C5Uk8cUuw",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTg5NzIxMX0.tA-fCXWmhTzE1YlOXTpftjn_qFzZJoZaCJEPBEYrYZI"
+}
+```
+
+```json Bad Request (400)
+{
+  "message": ["email must be an email"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json Unauthorized (401)
+{
+  "message": "Invalid password",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json Not Found (404)
+{
+  "message": "User not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+</CodeGroup>
+
+### Role-Based Access Control
+
+The `type` parameter enforces role-based access:
+
+- **`type: "mobile"`** → Only allows users with `role_id: 1`
+- **`type: "web"`** → Only allows users with `role_id: 2`
+
+If a user attempts to login with the wrong type:
+```json
+{
+  "message": "aqui no puedes entrar tontito",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+## Using Access Tokens
+
+Include the access token in the `Authorization` header for all protected endpoints.
+
+### Header Format
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Example Request
+
+```bash
+curl http://localhost:3000/auth/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### Protected Endpoints
+
+Endpoints that require authentication are marked with the `@UseGuards(JwtAuthGuard)` decorator. These include:
+
+- `/auth/profile` - Get current user profile
+- `/auth/verify` - Verify token validity
+- `/users` - Get/update user information
+- `/users/report` - Create fraud reports
+- `/users/reports` - Get user's reports
+- `/users/password` - Change password
+- And many more...
+
+### JWT Authentication Guard
+
+The API validates tokens using a custom guard (`src/common/guards/jwt.auth.guard.ts:1`):
+
+```typescript
+@Injectable()
+export class JwtAuthGuard implements CanActivate {
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    const request = ctx.switchToHttp().getRequest<Request>();
+    const auth = request.headers.authorization ?? '';
+
+    const [schema, token] = auth.split(' ');
+
+    if (schema !== 'Bearer' || !token)
+      throw new UnauthorizedException('Invalid token');
+
+    try {
+      const payload = await this.tokenService.verifyAccess(token);
+      (request as AuthenticatedRequest).user = {
+        userId: payload.sub,
+        profile: payload.profile,
+        raw: payload,
+      };
+      return true;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid token', error);
+    }
+  }
+}
+```
+
+## Refreshing Tokens
+
+When your access token expires, use the refresh token to obtain a new pair.
+
+### Request
+
+```http
+POST /auth/refresh
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Response
+
+<CodeGroup>
+```json Success (200)
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NEW_TOKEN...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NEW_REFRESH..."
+}
+```
+
+```json Unauthorized (401)
+{
+  "message": "Invalid refresh token: JsonWebTokenError: invalid signature",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+</CodeGroup>
+
+<Note>
+  Both tokens are rotated on refresh for enhanced security. Always store the new refresh token.
+</Note>
+
+## Verifying Tokens
+
+Check if an access token is still valid without making a data request.
+
+### Request
+
+```http
+POST /auth/verify
+Authorization: Bearer <access_token>
+```
+
+### Response
+
+<CodeGroup>
+```json Valid Token (200)
+{
+  "message": "Token is valid"
+}
+```
+
+```json Invalid Token (401)
+{
+  "message": "Invalid token",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+</CodeGroup>
+
+## Getting User Profile
+
+Retrieve the authenticated user's profile information.
+
+### Request
+
+```http
+GET /auth/profile
+Authorization: Bearer <access_token>
+```
+
+### Response
+
+```json
+{
+  "profile": {
+    "profile": {
+      "id": "1",
+      "email": "arturo@gmail.com",
+      "name": "Arturo Utrillaa",
+      "role_id": 1
+    }
+  }
+}
+```
+
+## Token Service Implementation
+
+The token generation and verification logic is handled by `TokensService` (`src/auth/tokens.service.ts:1`):
+
+### Generate Access Token
+
+```typescript
+async generateAccessToken(profile: UserProfile): Promise<string> {
+  return this.jwtService.signAsync(
+    {
+      sub: profile.id,
+      type: 'access',
+      profile: profile,
+    },
+    { expiresIn: '1h', secret: 'supersecret' },
+  );
+}
+```
+
+### Generate Refresh Token
+
+```typescript
+async generateRefreshToken(userId: string): Promise<string> {
+  return this.jwtService.signAsync(
+    {
+      sub: userId,
+      type: 'refresh',
+    },
+    { expiresIn: '7d', secret: 'supersecret' },
+  );
+}
+```
+
+### Verify Access Token
+
+```typescript
+async verifyAccess(token: string): Promise<AccessPayload> {
+  const payload = await this.jwtService.verifyAsync<AccessPayload>(token, {
+    secret: 'supersecret',
+  });
+  if (payload.type !== 'access') {
+    throw new Error('Invalid token type');
+  }
+  return payload;
+}
+```
+
+## Password Hashing
+
+Passwords are hashed using SHA-256 with a per-user salt (`src/users/users.service.ts:40`):
+
+```typescript
+// Registration
+const salt = Math.random().toString(36).substring(2, 15);
+const hashedPassword = sha256(password + salt);
+
+// Login verification
+if (user.password !== sha256(password + user.salt)) {
+  throw new UnauthorizedException('Invalid password');
+}
+```
+
+<Warning>
+  While SHA-256 is used in this implementation, consider using bcrypt or argon2 for production applications as they're specifically designed for password hashing.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Store tokens securely">
+    - **Web apps**: Use HttpOnly cookies or secure localStorage
+    - **Mobile apps**: Use platform-specific secure storage (Keychain/KeyStore)
+    - Never store tokens in plain text or in version control
+  </Accordion>
+
+  <Accordion title="Handle token expiration gracefully">
+    ```typescript
+    async function makeAuthenticatedRequest(endpoint: string) {
+      try {
+        return await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+      } catch (error) {
+        if (error.status === 401) {
+          // Access token expired, refresh it
+          const newTokens = await refreshTokens(refreshToken);
+          accessToken = newTokens.accessToken;
+          refreshToken = newTokens.refreshToken;
+          
+          // Retry the request
+          return await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+        }
+        throw error;
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Implement token refresh before expiration">
+    Refresh tokens proactively before they expire:
+    ```typescript
+    // Refresh 5 minutes before expiration
+    const tokenExpiresIn = 3600; // 1 hour
+    const refreshThreshold = 300; // 5 minutes
+    
+    setTimeout(async () => {
+      const newTokens = await refreshTokens(refreshToken);
+      updateStoredTokens(newTokens);
+    }, (tokenExpiresIn - refreshThreshold) * 1000);
+    ```
+  </Accordion>
+
+  <Accordion title="Clear tokens on logout">
+    ```typescript
+    function logout() {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      // Optionally call a logout endpoint to invalidate tokens server-side
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use HTTPS in production">
+    Always use HTTPS to prevent token interception. Tokens transmitted over HTTP can be stolen by attackers.
+  </Accordion>
+</AccordionGroup>
+
+## Common Authentication Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Invalid token` | Malformed or missing Bearer token | Ensure header format: `Authorization: Bearer <token>` |
+| `Token is valid` response on /verify | Token signature is invalid | Re-authenticate and get a new token |
+| `User not found` | Email doesn't exist in database | Verify email or register a new account |
+| `Invalid password` | Incorrect password | Check password spelling and case sensitivity |
+| `Invalid token type` | Using refresh token as access token (or vice versa) | Use correct token for the endpoint |
+| `Invalid refresh token: JsonWebTokenError` | Expired or tampered refresh token | Re-authenticate with email/password |
+
+## Example: Complete Authentication Flow
+
+Here's a complete example in JavaScript:
+
+```javascript
+const API_BASE = 'http://localhost:3000';
+
+class FalconAlertAuth {
+  constructor() {
+    this.accessToken = localStorage.getItem('accessToken');
+    this.refreshToken = localStorage.getItem('refreshToken');
+  }
+
+  async login(email, password, type = 'mobile') {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, type })
+    });
+
+    if (!response.ok) {
+      throw new Error('Login failed');
+    }
+
+    const { accessToken, refreshToken } = await response.json();
+    this.storeTokens(accessToken, refreshToken);
+    return { accessToken, refreshToken };
+  }
+
+  async refresh() {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: this.refreshToken })
+    });
+
+    if (!response.ok) {
+      this.clearTokens();
+      throw new Error('Session expired. Please login again.');
+    }
+
+    const { accessToken, refreshToken } = await response.json();
+    this.storeTokens(accessToken, refreshToken);
+    return { accessToken, refreshToken };
+  }
+
+  async authenticatedRequest(endpoint, options = {}) {
+    const makeRequest = async (token) => {
+      return fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    };
+
+    let response = await makeRequest(this.accessToken);
+
+    // If unauthorized, try refreshing the token
+    if (response.status === 401) {
+      await this.refresh();
+      response = await makeRequest(this.accessToken);
+    }
+
+    return response;
+  }
+
+  storeTokens(accessToken, refreshToken) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+  }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  }
+}
+
+// Usage
+const auth = new FalconAlertAuth();
+
+// Login
+await auth.login('user@example.com', 'SecurePass123', 'mobile');
+
+// Make authenticated requests
+const response = await auth.authenticatedRequest('/auth/profile');
+const profile = await response.json();
+console.log(profile);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api/auth/login">
+    Explore all available endpoints
+  </Card>
+  
+  <Card title="User Management" icon="users" href="/concepts/users">
+    Learn about user registration and profiles
+  </Card>
+  
+  <Card title="Reports" icon="shield" href="/concepts/reports">
+    Create and manage fraud reports
+  </Card>
+  
+  <Card title="WebSockets" icon="signal" href="/guides/websockets">
+    Set up real-time notifications
+  </Card>
+</CardGroup>

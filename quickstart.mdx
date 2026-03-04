@@ -1,80 +1,335 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with the FalconAlert API in minutes - from installation to your first API call
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through setting up the FalconAlert API and making your first authenticated request.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Before you begin, ensure you have the following installed:
 
-### Step 2: Deploy your changes
+- **Node.js** v18 or higher
+- **npm** (comes with Node.js)
+- **MySQL** 8.0 or higher
+- **Git** for cloning the repository
+- A code editor like **VS Code**
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Installation
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the FalconAlert backend repository to your local machine:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    git clone https://github.com/4rt21/backend-proyecto.git
+    cd backend-proyecto
+    ```
+  </Step>
 
-### Step 3: Go live
+  <Step title="Install Dependencies">
+    Install all required npm packages:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```bash
+    npm install
+    ```
 
-## Next steps
+    This will install key dependencies including:
+    - `@nestjs/core` - NestJS framework
+    - `@nestjs/jwt` - JWT authentication
+    - `mysql2` - MySQL database driver
+    - `class-validator` - Request validation
+    - And many more...
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Set Up MySQL Database">
+    Create the database and import the schema:
 
-<CardGroup cols={2}>
+    ```bash
+    # Restore the database from backup
+    mysql -u <your_username> -p Ofraud < backup.sql
+    ```
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+    This creates the `Ofraud` database with all necessary tables for users, reports, categories, upvotes, and notifications.
+  </Step>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the root directory:
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    ```bash
+    touch .env
+    ```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    Add your MySQL configuration:
 
-</CardGroup>
+    ```bash
+    MYSQL_HOST="localhost"
+    MYSQL_PORT=3306
+    MYSQL_USER="<your_user>"
+    MYSQL_PASSWORD="<your_password>"
+    MYSQL_DB="Ofraud"
+    ```
+
+    <Note>
+      Replace `<your_user>` and `<your_password>` with your MySQL credentials.
+    </Note>
+  </Step>
+
+  <Step title="Start the Server">
+    Launch the development server:
+
+    ```bash
+    # Development mode with hot reload
+    npm run start:dev
+
+    # Production mode
+    npm run start:prod
+    ```
+
+    You should see output indicating the server is running:
+    ```
+    [Nest] 12345  - Application is running on: http://localhost:3000
+    ```
+  </Step>
+
+  <Step title="Verify Installation">
+    Open your browser and navigate to the Swagger documentation:
+
+    ```
+    http://localhost:3000/docs
+    ```
+
+    You should see the interactive API documentation with all available endpoints.
+  </Step>
+</Steps>
+
+## Making Your First API Call
+
+Let's walk through a complete authentication flow and make your first authenticated request.
+
+### 1. Register a New User
+
+Create a new user account by sending a POST request to `/users/register`:
+
+```bash
+curl -X POST http://localhost:3000/users/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "name": "John Doe",
+    "password": "SecurePass123",
+    "role_id": "1"
+  }'
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "username": "happy_john842",
+    "image_path": "profile-pictures/default.jpg",
+    "role_id": 1,
+    "created_at": "2026-03-04T10:30:00.000Z"
+  },
+  "settings": {
+    "is_reactions_enabled": 1,
+    "is_review_enabled": 1,
+    "is_reports_enabled": 1,
+    "is_anonymous_reports_enabled": 0
+  }
+}
+```
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  **Role IDs:**
+  - `1` = Mobile user
+  - `2` = Web/Admin user
+  
+  Usernames are automatically generated with a creative format like `happy_john842`.
 </Note>
+
+### 2. Login and Get Tokens
+
+Authenticate with your credentials to receive JWT tokens:
+
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123",
+    "type": "mobile"
+  }'
+```
+
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsInByb2ZpbGUiOnsiaWQiOiIxIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZV9pZCI6MX0sImlhdCI6MTcwOTU1MDAwMCwiZXhwIjoxNzA5NTUzNjAwfQ.signature",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3MDk1NTAwMDAsImV4cCI6MTcxMDE1NDgwMH0.signature"
+}
+```
+
+<Warning>
+  Store these tokens securely. The `accessToken` expires in 1 hour, while the `refreshToken` lasts 7 days.
+</Warning>
+
+### 3. Make an Authenticated Request
+
+Use your access token to fetch your user profile:
+
+```bash
+curl http://localhost:3000/auth/profile \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+**Response:**
+```json
+{
+  "profile": {
+    "profile": {
+      "id": "1",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role_id": 1
+    }
+  }
+}
+```
+
+### 4. Create Your First Report
+
+Now let's create a fraud report:
+
+```bash
+curl -X POST http://localhost:3000/users/report \
+  -H "Authorization: Bearer <your_access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Suspicious phishing website",
+    "description": "This website is impersonating a legitimate bank and requesting login credentials.",
+    "report_url": "https://fake-bank-site.com",
+    "category": [1, 5],
+    "is_anonymous": 0
+  }'
+```
+
+**Response:**
+```json
+{
+  "reportId": 48,
+  "report_category": [1, 5]
+}
+```
+
+<Info>
+  Categories represent different types of fraud:
+  - `1` = Phishing
+  - `2` = Fake e-commerce
+  - `3` = Investment scams
+  - `4` = Tech support fraud
+  - `5` = General fraud
+</Info>
+
+### 5. Retrieve All Reports
+
+Fetch a list of all reports (with optional filtering):
+
+```bash
+# Get all reports
+curl http://localhost:3000/reports
+
+# Get only pending reports (status_id=1)
+curl "http://localhost:3000/reports?status=1"
+
+# Get reports with pagination
+curl "http://localhost:3000/reports?page=1"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "title": "Suspicious phishing website",
+    "image": "report-pictures/abc123.jpg",
+    "description": "This website is impersonating a legitimate bank...",
+    "created_at": "2026-03-04T10:35:00.000Z",
+    "updated_at": "2026-03-04T10:35:00.000Z",
+    "user_name": "John Doe",
+    "created_by": 1,
+    "user_image": "profile-pictures/default.jpg",
+    "report_url": "https://fake-bank-site.com",
+    "categories": [1, 5]
+  }
+]
+```
+
+## Common Status Codes
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| 200 | OK | Request succeeded |
+| 201 | Created | Resource created successfully |
+| 400 | Bad Request | Invalid request parameters |
+| 401 | Unauthorized | Missing or invalid authentication |
+| 404 | Not Found | Resource doesn't exist |
+| 409 | Conflict | Resource already exists (e.g., duplicate email) |
+
+## Next Steps
+
+Now that you have the API running:
+
+<CardGroup cols={2}>
+  <Card title="Authentication Guide" icon="lock" href="/authentication">
+    Learn about JWT tokens, refresh flows, and securing endpoints
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/auth/login">
+    Explore all available endpoints and their parameters
+  </Card>
+  
+  <Card title="Swagger Documentation" icon="file-code">
+    Visit `http://localhost:3000/docs` for interactive API testing
+  </Card>
+  
+  <Card title="WebSocket Events" icon="signal" href="/guides/websockets">
+    Set up real-time notifications for reports
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Database connection failed">
+    Verify your `.env` file has the correct MySQL credentials and that the MySQL service is running:
+    ```bash
+    # Check MySQL status
+    sudo systemctl status mysql
+    ```
+  </Accordion>
+
+  <Accordion title="Port 3000 already in use">
+    Change the port by setting the `PORT` environment variable:
+    ```bash
+    PORT=3001 npm run start:dev
+    ```
+  </Accordion>
+
+  <Accordion title="Invalid token errors">
+    Ensure you're including the Bearer prefix:
+    ```bash
+    Authorization: Bearer <token>
+    ```
+    Check that your access token hasn't expired (1 hour lifetime).
+  </Accordion>
+
+  <Accordion title="Email already exists">
+    Each user must have a unique email. Use a different email address or delete the existing user from the database.
+  </Accordion>
+</AccordionGroup>

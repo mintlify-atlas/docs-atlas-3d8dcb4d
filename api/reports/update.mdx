@@ -1,0 +1,167 @@
+---
+title: 'Update Report'
+api: 'PUT /reports/{id}'
+---
+
+Updates an existing report. At least one field must be provided for the update to proceed.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the report to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="title" type="string" optional>
+  Updated title for the report
+</ParamField>
+
+<ParamField body="description" type="string" optional>
+  Updated description of the reported issue
+</ParamField>
+
+<ParamField body="report_url" type="string" optional>
+  Updated URL of the reported resource
+</ParamField>
+
+<ParamField body="category" type="array" optional>
+  Updated array of category IDs. Replaces existing categories.
+</ParamField>
+
+<ParamField body="image" type="string" optional>
+  Updated image path for the report
+</ParamField>
+
+<ParamField body="status_id" type="number" optional>
+  Updated status of the report:
+  - `1` - Pendiente (Pending)
+  - `2` - Aprobada (Approved)
+  - `3` - Rechazada (Rejected)
+</ParamField>
+
+## Response
+
+<ResponseField name="report" type="object">
+  The updated report object
+  
+  <ResponseField name="report.id" type="number">
+    Report ID
+  </ResponseField>
+  
+  <ResponseField name="report.title" type="string">
+    Updated report title
+  </ResponseField>
+  
+  <ResponseField name="report.image" type="string">
+    Path to the report image
+  </ResponseField>
+  
+  <ResponseField name="report.description" type="string">
+    Updated report description
+  </ResponseField>
+  
+  <ResponseField name="report.created_at" type="string">
+    ISO 8601 timestamp of creation
+  </ResponseField>
+  
+  <ResponseField name="report.updated_at" type="string">
+    ISO 8601 timestamp of last update
+  </ResponseField>
+  
+  <ResponseField name="report.created_by" type="number">
+    User ID of the creator
+  </ResponseField>
+  
+  <ResponseField name="report.status_id" type="number">
+    Current status of the report
+  </ResponseField>
+  
+  <ResponseField name="report.report_url" type="string">
+    URL of the reported resource
+  </ResponseField>
+  
+  <ResponseField name="report.is_anonymous" type="number">
+    Whether the report is anonymous (0 or 1)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="categories" type="array">
+  Array of category IDs associated with the report
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request PUT \
+  --url https://api.falconalert.com/reports/53 \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "title": "Reporte actualizado de página fraudulenta",
+    "description": "Solicitan información personal y financiera",
+    "status_id": 2
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.falconalert.com/reports/53', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    title: 'Reporte actualizado de página fraudulenta',
+    description: 'Solicitan información personal y financiera',
+    status_id: 2
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    'https://api.falconalert.com/reports/53',
+    json={
+        'title': 'Reporte actualizado de página fraudulenta',
+        'description': 'Solicitan información personal y financiera',
+        'status_id': 2
+    }
+)
+
+result = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response (200)
+{
+  "report": {
+    "id": 53,
+    "title": "Reporte de pagina fraudulenta",
+    "image": "/images/reports/potholes.png",
+    "description": "Solicitan informacion personal",
+    "created_at": "2025-10-24T02:33:21.000Z",
+    "updated_at": "2025-10-24T02:33:21.000Z",
+    "created_by": 1,
+    "status_id": 1,
+    "report_url": "https://example.com/report/123",
+    "is_anonymous": 0
+  },
+  "categories": [2, 3]
+}
+```
+
+```json No Fields to Update (400)
+{
+  "message": "At least one field must be provided for update",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+</ResponseExample>

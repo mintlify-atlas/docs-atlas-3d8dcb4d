@@ -1,0 +1,77 @@
+---
+title: "Refresh Token"
+api: "POST /auth/refresh"
+---
+
+Refreshes an expired access token using a valid refresh token.
+
+## Request Body
+
+<ParamField body="refreshToken" type="string" required>
+  Valid refresh token obtained from the login endpoint. The refresh token is used to generate a new access token and refresh token pair.
+  
+  **Example:** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+</ParamField>
+
+## Response
+
+<ResponseField name="accessToken" type="string">
+  New JWT access token for authenticated requests. Valid for 1 hour.
+</ResponseField>
+
+<ResponseField name="refreshToken" type="string">
+  New JWT refresh token. Valid for 7 days.
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.falconalert.com/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTg5NzIxMX0.tA-fCXWmhTzE1YlOXTpftjn_qFzZJoZaCJEPBEYrYZI"
+  }'
+```
+
+## Example Response
+
+<CodeGroup>
+
+```json Success (200)
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsInByb2ZpbGUiOnsiaWQiOiIxIiwiZW1haWwiOiJhcnR1cm9AZ21haWwuY29tIiwibmFtZSI6IkFydHVybyBVdHJpbGxhYSDDiURJVCIsInJvbGVfaWQiOjF9LCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTI5NjAxMX0.ECBWVGu-tXr7Shs9qvg9LMISOXtFQmp3R8C5Uk8cUuw",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTg5NzIxMX0.tA-fCXWmhTzE1YlOXTpftjn_qFzZJoZaCJEPBEYrYZI"
+}
+```
+
+```json Invalid Refresh Token (401)
+{
+  "message": "Invalid refresh token: JsonWebTokenError: invalid signature",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json User Not Found (404)
+{
+  "message": "Usuario no encontrado",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+</CodeGroup>
+
+## Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Token refreshed successfully. Returns new access and refresh tokens. |
+| 401  | Invalid or expired refresh token. |
+| 404  | User associated with the refresh token not found. |
+
+## Notes
+
+- Both the access token and refresh token are rotated when using this endpoint
+- The old refresh token becomes invalid after a successful refresh
+- If the refresh token is expired, the user must login again

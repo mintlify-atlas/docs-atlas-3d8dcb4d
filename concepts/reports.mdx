@@ -1,0 +1,273 @@
+---
+title: 'Reports'
+description: 'Understanding fraud reports in FalconAlert'
+---
+
+Reports are the core entity in FalconAlert, representing user-submitted fraud alerts about suspicious websites, scams, or fraudulent activities.
+
+## Report Structure
+
+A report contains the following key information:
+
+- **Title**: Brief description of the fraudulent activity
+- **Description**: Detailed explanation of the issue
+- **Image**: Visual evidence of the fraud
+- **Report URL**: The URL of the suspicious website
+- **Categories**: One or more fraud categories (e.g., Phishing, Fake Sales, Investment Fraud)
+- **Creator**: The user who submitted the report
+- **Status**: Current moderation status (Pending, Approved, Rejected)
+- **Anonymous Flag**: Whether the report is submitted anonymously
+
+## Report Lifecycle
+
+### 1. Creation
+
+Reports can be created in two ways:
+
+<CodeGroup>
+```bash Public Endpoint
+POST /reports
+```
+
+```bash Authenticated User
+POST /users/report
+```
+</CodeGroup>
+
+When a user creates a report, it starts with a pending status (`status_id: 1`).
+
+<CodeGroup>
+```json Request Example
+{
+  "title": "Página de phishing detectada",
+  "image": "/images/reports/suspicious-site.png",
+  "description": "El portal imita la interfaz de una empresa de envíos para robar credenciales",
+  "status_id": 1,
+  "category": [2, 5],
+  "report_url": "https://envios-gratis-seguro.net",
+  "is_anonymous": 0
+}
+```
+
+```json Response Example
+{
+  "reportId": 48,
+  "report_category": [2, 3]
+}
+```
+</CodeGroup>
+
+### 2. Review and Moderation
+
+Once submitted, reports enter the moderation queue where administrators can:
+
+- **Approve** the report (`status_id: 2`) - Making it publicly visible
+- **Reject** the report (`status_id: 3`) - If it doesn't meet quality standards
+- **Update** report details if needed
+
+See [Moderation](/concepts/moderation) for more details on the admin workflow.
+
+### 3. Updates
+
+Reports can be updated using the `PUT /reports/:id` endpoint:
+
+```typescript
+// reports.controller.ts:114
+async updateReport(@Body() body: UpdateReportDTO, @Param('id') id: string) {
+  if (
+    body.category === undefined &&
+    body.description === undefined &&
+    body.status_id === undefined &&
+    body.title === undefined &&
+    body.image === undefined &&
+    body.report_url === undefined
+  ) {
+    throw new BadRequestException(
+      'At least one field must be provided for update',
+    );
+  }
+
+  return await this.reportsService.updateReport(id, body);
+}
+```
+
+## Report Statuses
+
+<Note>
+Report statuses determine visibility and discoverability of fraud alerts.
+</Note>
+
+| Status ID | Status Name | Description |
+|-----------|-------------|-------------|
+| 1 | Pendiente | Report is awaiting moderation |
+| 2 | Aprobada | Report has been approved and is publicly visible |
+| 3 | Rechazada | Report has been rejected by moderators |
+
+You can filter reports by status:
+
+```bash
+GET /reports?status_id=2  # Get approved reports
+GET /reports?status_id=1  # Get pending reports
+```
+
+## Categories
+
+Reports can be associated with multiple fraud categories to help users find relevant alerts:
+
+<CodeGroup>
+```json Category Examples
+[
+  {
+    "id": 1,
+    "name": "Electrodomésticos",
+    "description": "Aparatos para el hogar que facilitan las tareas diarias"
+  },
+  {
+    "id": 2,
+    "name": "Muebles",
+    "description": "Artículos para amueblar y decorar espacios"
+  },
+  {
+    "id": 3,
+    "name": "Ropa",
+    "description": "Prendas de vestir para diferentes estilos y ocasiones"
+  }
+]
+```
+</CodeGroup>
+
+Categories are managed through the `/categories` endpoint and can be retrieved with `GET /categories`.
+
+## Upvotes
+
+Users can upvote reports they find helpful, which helps surface the most valuable fraud alerts:
+
+<CodeGroup>
+```bash Create Upvote
+POST /upvotes
+Authorization: Bearer {token}
+
+{
+  "reportId": "48"
+}
+```
+
+```bash Remove Upvote
+DELETE /upvotes
+Authorization: Bearer {token}
+
+{
+  "reportId": "48"
+}
+```
+
+```bash Get Total Upvotes
+POST /upvotes/total
+Authorization: Bearer {token}
+
+{
+  "postId": "48"
+}
+```
+</CodeGroup>
+
+The dashboard shows top reports by upvotes:
+
+```json
+{
+  "topReportsMonth": [
+    {
+      "id": 2,
+      "title": "Página de phishing detectada",
+      "upvotes": 2
+    },
+    {
+      "id": 7,
+      "title": "Portal falso de soporte técnico",
+      "upvotes": 2
+    }
+  ]
+}
+```
+
+## Anonymous Reports
+
+Users can submit reports anonymously by setting `is_anonymous: 1`:
+
+```json
+{
+  "title": "Sitio fraudulento",
+  "is_anonymous": 1,
+  // ... other fields
+}
+```
+
+<Info>
+When a report is anonymous, the user's identity is hidden but the report is still linked to their account for accountability.
+</Info>
+
+Users can set their default anonymity preference in their settings (see [User Settings](/concepts/users#user-settings)).
+
+## Retrieving Reports
+
+### Get All Reports
+
+```bash
+GET /reports
+GET /reports?status_id=2
+GET /reports?page=1
+GET /reports?id=123
+```
+
+### Get User's Reports
+
+Authenticated users can retrieve their own reports:
+
+```bash
+GET /users/reports
+Authorization: Bearer {token}
+```
+
+This is implemented in the user controller:
+
+```typescript
+// user.controller.ts:102
+@UseGuards(JwtAuthGuard)
+@Get('reports')
+async getUserReports(@Req() req: AuthenticatedRequest) {
+  const id = req.user.profile.id;
+  return await this.reportsService.getUserReports(Number(id));
+}
+```
+
+### Count Reports
+
+Get the total number of reports, optionally filtered by status:
+
+```bash
+GET /reports/count
+GET /reports/count?status_id=1  # Count pending reports
+```
+
+## Deletion
+
+Reports can be deleted using `DELETE /reports/:id`. This also removes the associated image:
+
+```typescript
+// reports.service.ts:94
+async deleteReport(id: string) {
+  const report = await this.reportsRepository.findByReportId(id);
+
+  if (!report) {
+    throw new NotFoundException(`Report with ID ${id} not found`);
+  }
+
+  await this.imagesService.deleteFile(report.image);
+
+  return this.reportsRepository.deleteReport(id);
+}
+```
+
+<Warning>
+Deleting a report is permanent and cannot be undone. Consider rejecting reports instead of deleting them for audit purposes.
+</Warning>

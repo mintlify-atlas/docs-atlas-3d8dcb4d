@@ -1,0 +1,64 @@
+---
+title: 'Create Category'
+api: 'POST /categories'
+---
+
+Creates a new category in the system. Categories are used to classify and organize reports.
+
+## Authentication
+
+Requires admin authentication via Bearer token.
+
+## Body Parameters
+
+<ParamField body="name" type="string" required>
+  The name of the category
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  A detailed description of what this category represents
+</ParamField>
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.falconalert.com/categories \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Electronics",
+    "description": "Devices and gadgets"
+  }'
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="id" type="number">
+  Unique identifier for the newly created category
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the category
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Description of the category
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "id": 1,
+  "name": "Electrodomésticos",
+  "description": "Aparatos para el hogar que facilitan las tareas diarias, como refrigeradores, lavadoras o microondas."
+}
+```
+
+```json 400 - Bad Request
+{
+  "message": "No fields provided to update",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+</ResponseExample>

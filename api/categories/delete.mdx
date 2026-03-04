@@ -1,0 +1,57 @@
+---
+title: 'Delete Category'
+api: 'DELETE /categories'
+---
+
+Deletes an existing category from the system. This operation is permanent and cannot be undone.
+
+## Authentication
+
+Requires admin authentication via Bearer token.
+
+## Body Parameters
+
+<ParamField body="id" type="number" required>
+  The unique identifier of the category to delete
+</ParamField>
+
+<CodeGroup>
+```bash curl
+curl -X DELETE https://api.falconalert.com/categories \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 1
+  }'
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="success" type="string">
+  Indicates whether the deletion was successful
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "success": "true"
+}
+```
+
+```json 400 - Category ID Required
+{
+  "message": "Category ID is required for update.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json 404 - Category Not Found
+{
+  "message": "Category with id 442 not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+</ResponseExample>

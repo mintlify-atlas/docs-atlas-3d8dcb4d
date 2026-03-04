@@ -1,0 +1,350 @@
+---
+title: 'File Uploads'
+description: 'Image upload and storage configuration for profile pictures and report evidence'
+---
+
+## Overview
+
+FalconAlert supports file uploads for:
+
+- **Profile pictures** - User avatar images
+- **Report pictures** - Evidence images for fraud reports
+
+Images are stored locally in the `public/` directory and served as static assets.
+
+## Upload Configuration
+
+The file upload system is implemented in `src/images/` using NestJS's built-in file handling with Multer.
+
+### Images Service
+
+The core upload logic is in `src/images/images.service.ts`:
+
+```typescript src/images/images.service.ts
+import { Injectable } from '@nestjs/common';
+import fs from 'node:fs';
+import path from 'node:path';
+import { randomName } from 'src/util/crypto/hash.util';
+
+@Injectable()
+export class ImagesService {
+  async uploadFile(
+    file: Express.Multer.File,
+    folder: string,
+  ): Promise<Record<string, string>> {
+    const projectFolder = path.join(__dirname, '..', '..', 'public', folder);
+    await fs.promises.mkdir(projectFolder, { recursive: true });
+
+    const key = randomName();
+    const ext = path.extname(file.originalname) || '.jpg';
+    const filePath = path.join(projectFolder, `${key}${ext}`);
+
+    await fs.promises.writeFile(filePath, file.buffer);
+    return { path: path.join(folder, `${key}${ext}`) };
+  }
+
+  async deleteFile(filePath: string): Promise<void> {
+    const fullPath = path.join(__dirname, '..', '..', 'public', filePath);
+
+    try {
+      await fs.promises.unlink(fullPath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`File not found: ${fullPath}`);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  async modifyFile(
+    file: Express.Multer.File,
+    filePath: string,
+  ): Promise<Record<string, string>> {
+    if (filePath === 'profile-pictures/default.jpg') {
+      const folder = path.dirname(filePath);
+      const newFilePath = await this.uploadFile(file, folder);
+      return newFilePath;
+    }
+    await this.deleteFile(filePath);
+    const folder = path.dirname(filePath);
+    const newFilePath = await this.uploadFile(file, folder);
+    return newFilePath;
+  }
+}
+```
+
+### Key Features
+
+<CardGroup cols={2}>
+  <Card title="Secure File Names" icon="shield">
+    Files are renamed using cryptographic hashing to prevent collisions and security issues.
+  </Card>
+  <Card title="Directory Management" icon="folder">
+    Automatically creates directories if they don't exist using `recursive: true`.
+  </Card>
+  <Card title="Protected Defaults" icon="lock">
+    Default profile pictures are protected from deletion.
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Gracefully handles missing files and other errors.
+  </Card>
+</CardGroup>
+
+## Upload Endpoints
+
+The `ImagesController` provides three main endpoints:
+
+### Upload Image
+
+```typescript
+POST /images/:folder
+```
+
+```typescript src/images/images.controller.ts
+@Post(':folder')
+@UseInterceptors(FileInterceptor('file'))
+@ApiOperation({ summary: 'Subir una imagen a una carpeta' })
+@ApiConsumes('multipart/form-data')
+async uploadFile(
+  @UploadedFile(
+    new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 1024 * 1024 }),
+        new FileTypeValidator({ fileType: 'image/*' }),
+      ],
+    }),
+  )
+  file: Express.Multer.File,
+  @Param('folder') folder: string,
+) {
+  return this.imagesService.uploadFile(file, folder);
+}
+```
+
+**Validation Rules:**
+- Maximum file size: **1 MB** (1024 * 1024 bytes)
+- File type: **image/* only**
+- Folder parameter required in URL
+
+**Request Example:**
+
+```bash
+curl -X POST http://localhost:3000/images/profile-pictures \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@avatar.jpg"
+```
+
+**Response:**
+
+```json
+{
+  "path": "profile-pictures/5211a4b631c9dba76cf21c50c4bf3552f8c53548.jpg"
+}
+```
+
+### Modify Image
+
+```typescript
+PUT /images/:folder/:path
+```
+
+```typescript src/images/images.controller.ts
+@Put(':folder/:path')
+@UseInterceptors(FileInterceptor('file'))
+async modifyFile(
+  @UploadedFile(
+    new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 10240 * 10240 }),
+        new FileTypeValidator({ fileType: 'image/*' }),
+      ],
+    }),
+  )
+  file: Express.Multer.File,
+  @Param('folder') folder: string,
+  @Param('path') path: string,
+) {
+  const filepath = `${folder}/${path}`;
+  return this.imagesService.modifyFile(file, filepath);
+}
+```
+
+**Validation Rules:**
+- Maximum file size: **100 MB** (10240 * 10240 bytes)
+- File type: **image/* only**
+
+### Delete Image
+
+```typescript
+DELETE /images
+```
+
+```typescript src/images/images.controller.ts
+@Delete()
+async deleteFile(@Body('path') path: string) {
+  return this.imagesService.deleteFile(path);
+}
+```
+
+**Request Example:**
+
+```bash
+curl -X DELETE http://localhost:3000/images \
+  -H "Content-Type: application/json" \
+  -d '{"path": "report-pictures/abc123.jpg"}'
+```
+
+## Storage Directories
+
+Images are stored in the following structure:
+
+```
+public/
+├── profile-pictures/
+│   ├── default.jpg
+│   ├── 5211a4b6...f8c53548.png
+│   └── a8f3c2d1...9e4b7a3c.jpg
+└── report-pictures/
+    ├── 0512ec54...c17335b8.jpg
+    ├── 57c0a3a4...8ff743a5.jpg
+    └── b9237d0f...324ea742.jpg
+```
+
+### Static File Serving
+
+The `public/` directory is configured as a static asset directory in `src/main.ts`:
+
+```typescript src/main.ts
+const publicPath = path.join(__dirname, '..', 'public');
+app.useStaticAssets(publicPath);
+```
+
+This allows uploaded images to be accessed directly:
+
+```
+http://localhost:3000/profile-pictures/5211a4b6...f8c53548.png
+http://localhost:3000/report-pictures/abc123.jpg
+```
+
+## File Name Generation
+
+Files are renamed using a cryptographic hash function (`randomName()`) from `src/util/crypto/hash.util`:
+
+- Generates unique, collision-resistant file names
+- Prevents directory traversal attacks
+- Maintains file extension from original upload
+- Example output: `5211a4b631c9dba76cf21c50c4bf3552f8c53548.jpg`
+
+## AWS S3 Integration
+
+The project includes AWS S3 SDK dependencies:
+
+```json package.json
+{
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.891.0",
+    "@aws-sdk/s3-request-presigner": "^3.893.0"
+  }
+}
+```
+
+To enable S3 uploads:
+
+1. **Add environment variables:**
+
+   ```bash .env
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_REGION=us-east-1
+   AWS_S3_BUCKET=your-bucket-name
+   ```
+
+2. **Update ImagesService:**
+
+   ```typescript
+   import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+   const s3Client = new S3Client({
+     region: process.env.AWS_REGION,
+     credentials: {
+       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+     },
+   });
+
+   async uploadToS3(file: Express.Multer.File, key: string) {
+     const command = new PutObjectCommand({
+       Bucket: process.env.AWS_S3_BUCKET,
+       Key: key,
+       Body: file.buffer,
+       ContentType: file.mimetype,
+     });
+
+     await s3Client.send(command);
+     return {
+       url: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
+     };
+   }
+   ```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="File Size Limits">
+    Always validate file sizes to prevent abuse:
+    - Profile pictures: 1 MB max
+    - Report evidence: 10-100 MB max
+    - Adjust based on your use case
+  </Accordion>
+
+  <Accordion title="File Type Validation">
+    Only accept image files using `FileTypeValidator`:
+    - Prevents malicious file uploads
+    - Ensures consistent file handling
+    - Use `image/*` or specific MIME types
+  </Accordion>
+
+  <Accordion title="Storage Considerations">
+    For production deployments:
+    - Use cloud storage (S3, Google Cloud Storage)
+    - Implement CDN for faster delivery
+    - Set up backup strategies
+    - Monitor storage usage
+  </Accordion>
+
+  <Accordion title="Security">
+    - Never trust user-provided file names
+    - Always generate new file names
+    - Validate file contents, not just extensions
+    - Implement rate limiting on upload endpoints
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+Common upload errors:
+
+```typescript
+// File too large
+{
+  "statusCode": 400,
+  "message": "File size exceeds maximum limit"
+}
+
+// Invalid file type
+{
+  "statusCode": 400,
+  "message": "File type must be image/*"
+}
+
+// Missing file
+{
+  "statusCode": 400,
+  "message": "File is required"
+}
+```
+
+<Tip>
+  Test file uploads using the Swagger UI at `/docs` for an interactive experience.
+</Tip>

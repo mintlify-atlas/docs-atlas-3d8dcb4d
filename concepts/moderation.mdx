@@ -1,0 +1,350 @@
+---
+title: 'Moderation'
+description: 'Admin workflows for reviewing and moderating fraud reports'
+---
+
+Moderation is the process by which administrators review, approve, or reject user-submitted fraud reports to ensure quality and accuracy.
+
+## Moderation Workflow
+
+When users submit fraud reports, they enter a moderation queue with `status_id: 1` (pending). Administrators review these reports and make decisions about their visibility.
+
+<Steps>
+  <Step title="Report Submission">
+    User creates a fraud report through `/users/report` or `/reports`
+    
+    Initial status: **Pending** (`status_id: 1`)
+  </Step>
+  
+  <Step title="Admin Review">
+    Administrator reviews the report details:
+    - Title and description quality
+    - Evidence (screenshots)
+    - URL validity
+    - Category appropriateness
+  </Step>
+  
+  <Step title="Decision">
+    Admin approves or rejects:
+    - **Approve**: Set `status_id: 2` (aprobada)
+    - **Reject**: Set `status_id: 3` (rechazada)
+  </Step>
+  
+  <Step title="Publication">
+    Approved reports become publicly visible and searchable
+  </Step>
+</Steps>
+
+## Report Statuses
+
+<CardGroup cols={3}>
+  <Card title="Pending" icon="clock">
+    **Status ID: 1**
+    
+    Awaiting admin review
+  </Card>
+  
+  <Card title="Approved" icon="check">
+    **Status ID: 2**
+    
+    Publicly visible
+  </Card>
+  
+  <Card title="Rejected" icon="xmark">
+    **Status ID: 3**
+    
+    Hidden from public
+  </Card>
+</CardGroup>
+
+## Approving Reports
+
+To approve a report, update its `status_id` to 2:
+
+<CodeGroup>
+```bash Approve Report
+PUT /reports/48
+
+{
+  "status_id": 2
+}
+```
+
+```json Response
+{
+  "report": {
+    "id": 48,
+    "title": "Reporte de pagina fraudulenta",
+    "image": "/images/reports/potholes.png",
+    "description": "Solicitan informacion personal",
+    "created_at": "2025-10-24T02:33:21.000Z",
+    "updated_at": "2025-10-24T02:33:21.000Z",
+    "created_by": 1,
+    "status_id": 2,
+    "report_url": "https://example.com/report/123",
+    "is_anonymous": 0
+  },
+  "categories": [2, 3]
+}
+```
+</CodeGroup>
+
+## Rejecting Reports
+
+To reject a report, update its `status_id` to 3:
+
+```bash
+PUT /reports/48
+
+{
+  "status_id": 3
+}
+```
+
+<Note>
+Rejected reports remain in the database but are hidden from public endpoints. Consider adding a reason field for transparency with users.
+</Note>
+
+## Moderating Report Content
+
+Administrators can also modify report content during review:
+
+<CodeGroup>
+```bash Update Title & Description
+PUT /reports/48
+
+{
+  "title": "Updated title for clarity",
+  "description": "More detailed description",
+  "status_id": 2
+}
+```
+
+```bash Update Categories
+PUT /reports/48
+
+{
+  "category": [1, 3, 5],
+  "status_id": 2
+}
+```
+
+```bash Update URL
+PUT /reports/48
+
+{
+  "report_url": "https://corrected-url.com",
+  "status_id": 2
+}
+```
+</CodeGroup>
+
+The update logic ensures at least one field is provided:
+
+```typescript
+// reports.controller.ts:114
+async updateReport(@Body() body: UpdateReportDTO, @Param('id') id: string) {
+  if (
+    body.category === undefined &&
+    body.description === undefined &&
+    body.status_id === undefined &&
+    body.title === undefined &&
+    body.image === undefined &&
+    body.report_url === undefined
+  ) {
+    throw new BadRequestException(
+      'At least one field must be provided for update',
+    );
+  }
+
+  return await this.reportsService.updateReport(id, body);
+}
+```
+
+## Filtering Pending Reports
+
+Administrators can filter reports by status to view their moderation queue:
+
+<CodeGroup>
+```bash Get Pending Reports
+GET /reports?status_id=1
+```
+
+```bash Count Pending Reports
+GET /reports/count?status_id=1
+```
+
+```json Response
+{
+  "count": 18
+}
+```
+</CodeGroup>
+
+## Dashboard Metrics
+
+The admin dashboard provides moderation statistics:
+
+```bash
+GET /dashboard
+```
+
+Response includes:
+```json
+{
+  "stats": {
+    "total_reports": 30,
+    "pending_reports": 18,
+    "approved_reports": 8,
+    "rejected_reports": 4,
+    "protected_people": 11,
+    "total_users": 12
+  },
+  "recentAlerts": [
+    {
+      "id": 45,
+      "title": "televisor Smart a precio muy bajo"
+    },
+    {
+      "id": 44,
+      "title": "ropa de marca original a súper descuento"
+    }
+  ]
+}
+```
+
+<Info>
+The dashboard helps administrators track moderation workload and identify reports that need review.
+</Info>
+
+## Deleting Reports
+
+In cases where a report violates policies or contains inappropriate content, administrators can permanently delete it:
+
+```bash
+DELETE /reports/48
+```
+
+The deletion process removes both the database record and associated files:
+
+```typescript
+// reports.service.ts:94
+async deleteReport(id: string) {
+  const report = await this.reportsRepository.findByReportId(id);
+
+  if (!report) {
+    throw new NotFoundException(`Report with ID ${id} not found`);
+  }
+
+  await this.imagesService.deleteFile(report.image);
+
+  return this.reportsRepository.deleteReport(id);
+}
+```
+
+<Warning>
+Deletion is permanent and cannot be undone. Use rejection (`status_id: 3`) instead of deletion when possible to maintain audit trails.
+</Warning>
+
+## User Management
+
+Administrators can also manage users through admin endpoints:
+
+### View All Users
+
+```bash
+GET /admin/user/list
+```
+
+Returns a list of all registered users with their roles, email addresses, and registration dates.
+
+### View User Details
+
+```bash
+GET /admin/user/13
+```
+
+### Update User Information
+
+Administrators can modify user accounts:
+
+```bash
+PUT /admin/user/13
+
+{
+  "email": "updated@example.com",
+  "name": "Updated Name",
+  "username": "new_username"
+}
+```
+
+This is useful for:
+- Correcting user information
+- Resolving email conflicts
+- Managing user roles (future enhancement)
+
+### User Statistics
+
+Get total user count:
+
+```bash
+GET /admin/user/count
+```
+
+Response:
+```json
+{
+  "count": 12
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Review Reports Promptly">
+    Timely moderation ensures that legitimate fraud alerts reach users quickly while preventing misinformation from spreading.
+  </Accordion>
+  
+  <Accordion title="Provide Feedback">
+    When rejecting reports, consider implementing a feedback mechanism to help users understand why their report was rejected and how to improve future submissions.
+  </Accordion>
+  
+  <Accordion title="Monitor Trends">
+    Use the dashboard to identify common fraud categories and patterns. This helps prioritize review efforts and identify emerging threats.
+  </Accordion>
+  
+  <Accordion title="Preserve Evidence">
+    Avoid deleting reports unless absolutely necessary. Rejected reports can serve as valuable data for understanding fraud patterns and improving detection.
+  </Accordion>
+  
+  <Accordion title="Verify URLs">
+    Always verify that report URLs are valid and accessible. Update or correct URLs during the review process if needed.
+  </Accordion>
+</AccordionGroup>
+
+## Moderation API Reference
+
+Here's a quick reference for common moderation tasks:
+
+| Task | Endpoint | Method | Body |
+|------|----------|--------|------|
+| View pending reports | `/reports?status_id=1` | GET | - |
+| Approve report | `/reports/:id` | PUT | `{"status_id": 2}` |
+| Reject report | `/reports/:id` | PUT | `{"status_id": 3}` |
+| Update content | `/reports/:id` | PUT | `{"title": "...", "description": "..."}` |
+| Delete report | `/reports/:id` | DELETE | - |
+| Count pending | `/reports/count?status_id=1` | GET | - |
+| View dashboard | `/dashboard` | GET | - |
+| List users | `/admin/user/list` | GET | - |
+| Update user | `/admin/user/:id` | PUT | `{"name": "...", "email": "..."}` |
+
+## Future Enhancements
+
+Potential improvements to the moderation system:
+
+- **Rejection Reasons**: Add a field to explain why reports are rejected
+- **Review History**: Track who reviewed each report and when
+- **Auto-Moderation**: Implement basic checks for spam or low-quality submissions
+- **Bulk Actions**: Allow approving/rejecting multiple reports at once
+- **Appeal Process**: Let users request reconsideration of rejected reports
+- **Moderator Roles**: Create different levels of moderator permissions

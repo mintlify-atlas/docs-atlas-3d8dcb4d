@@ -1,0 +1,256 @@
+---
+title: Get Dashboard Stats
+api: GET /dashboard
+description: Retrieve comprehensive dashboard statistics including total reports, status breakdowns, top categories, monthly trends, top users, recent alerts, and popular reports
+---
+
+## Response
+
+<ResponseField name="stats" type="object">
+  Overall statistics summary
+  
+  <Expandable title="stats properties">
+    <ResponseField name="total_reports" type="number">
+      Total number of reports in the system
+    </ResponseField>
+    
+    <ResponseField name="pending_reports" type="number">
+      Number of reports with pending status
+    </ResponseField>
+    
+    <ResponseField name="approved_reports" type="number">
+      Number of reports that have been approved
+    </ResponseField>
+    
+    <ResponseField name="rejected_reports" type="number">
+      Number of reports that have been rejected
+    </ResponseField>
+    
+    <ResponseField name="protected_people" type="number">
+      Number of people protected by approved reports
+    </ResponseField>
+    
+    <ResponseField name="total_users" type="number">
+      Total number of users in the system
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="topCategoriesReports" type="array">
+  List of top categories by report count
+  
+  <Expandable title="topCategoriesReports item">
+    <ResponseField name="name" type="string">
+      Category name
+    </ResponseField>
+    
+    <ResponseField name="total_reportes" type="number">
+      Total number of reports in this category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="reportsPerMonth" type="array">
+  Monthly report statistics
+  
+  <Expandable title="reportsPerMonth item">
+    <ResponseField name="month" type="string">
+      Month in YYYY-MM format
+    </ResponseField>
+    
+    <ResponseField name="total_reports" type="number">
+      Total number of reports created in this month
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="topUsers" type="array">
+  Top users by report creation count
+  
+  <Expandable title="topUsers item">
+    <ResponseField name="name" type="string">
+      User's name
+    </ResponseField>
+    
+    <ResponseField name="total_reports" type="number">
+      Total number of reports created by this user
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recentAlerts" type="array">
+  Most recently created alerts
+  
+  <Expandable title="recentAlerts item">
+    <ResponseField name="id" type="number">
+      Alert ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Alert title
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="topReportsMonth" type="array">
+  Top reports for the current month ranked by upvotes
+  
+  <Expandable title="topReportsMonth item">
+    <ResponseField name="id" type="number">
+      Report ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Report title
+    </ResponseField>
+    
+    <ResponseField name="upvotes" type="number">
+      Number of upvotes received
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url https://api.falconalert.com/dashboard
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Response
+{
+  "stats": {
+    "total_reports": 30,
+    "pending_reports": 18,
+    "approved_reports": 8,
+    "rejected_reports": 4,
+    "protected_people": 11,
+    "total_users": 12
+  },
+  "topCategoriesReports": [
+    {
+      "name": "Muebles",
+      "total_reportes": 8
+    },
+    {
+      "name": "Ropa",
+      "total_reportes": 4
+    },
+    {
+      "name": "Electrónica",
+      "total_reportes": 10
+    },
+    {
+      "name": "Libros",
+      "total_reportes": 5
+    },
+    {
+      "name": "Juguetes",
+      "total_reportes": 4
+    },
+    {
+      "name": "Deportes",
+      "total_reportes": 4
+    }
+  ],
+  "reportsPerMonth": [
+    {
+      "month": "2025-09",
+      "total_reports": 5
+    },
+    {
+      "month": "2025-10",
+      "total_reports": 25
+    }
+  ],
+  "topUsers": [
+    {
+      "name": "Arturo Utrillaa",
+      "total_reports": 3
+    },
+    {
+      "name": "Ana Keila Martínez Moreno",
+      "total_reports": 3
+    },
+    {
+      "name": "Dr. Sahur",
+      "total_reports": 1
+    }
+  ],
+  "recentAlerts": [
+    {
+      "id": 45,
+      "title": "televisor Smart a precio muy bajo"
+    },
+    {
+      "id": 44,
+      "title": "ropa de marca original a súper descuento"
+    },
+    {
+      "id": 43,
+      "title": "Prueba"
+    },
+    {
+      "id": 9,
+      "title": "Portal falso de soporte técnico"
+    },
+    {
+      "id": 8,
+      "title": "Portal falso de soporte técnico"
+    }
+  ],
+  "topReportsMonth": [
+    {
+      "id": 2,
+      "title": "Página de phishing detectada",
+      "upvotes": 2
+    },
+    {
+      "id": 7,
+      "title": "Portal falso de soporte técnico",
+      "upvotes": 2
+    },
+    {
+      "id": 1,
+      "title": "Tienda de componentes de computadoras DDCompus",
+      "upvotes": 1
+    },
+    {
+      "id": 3,
+      "title": "Sitio de ventas falsas",
+      "upvotes": 1
+    },
+    {
+      "id": 8,
+      "title": "Portal falso de soporte técnico",
+      "upvotes": 1
+    },
+    {
+      "id": 9,
+      "title": "Portal falso de soporte técnico",
+      "upvotes": 1
+    },
+    {
+      "id": 26,
+      "title": "Viaje a la luna",
+      "upvotes": 1
+    },
+    {
+      "id": 34,
+      "title": "ventas de sillas: Silla de oficina que teletransporta a la playa por $300",
+      "upvotes": 1
+    },
+    {
+      "id": 44,
+      "title": "ropa de marca original a súper descuento",
+      "upvotes": 1
+    }
+  ]
+}
+```
+
+</ResponseExample>

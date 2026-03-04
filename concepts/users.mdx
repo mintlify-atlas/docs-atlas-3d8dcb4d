@@ -1,0 +1,375 @@
+---
+title: 'Users'
+description: 'User management, roles, and settings in FalconAlert'
+---
+
+Users are individuals who interact with the FalconAlert platform to report fraud, upvote helpful reports, and manage their profiles.
+
+## User Structure
+
+A user account contains:
+
+- **Email**: Unique email address for authentication
+- **Name**: User's full name
+- **Username**: Auto-generated creative username (e.g., `happy_ximena850`)
+- **Password**: Hashed password with salt
+- **Profile Image**: Optional profile picture
+- **Role**: User role determining permissions
+- **Settings**: User preferences for notifications and privacy
+
+## User Roles
+
+FalconAlert supports role-based access control:
+
+| Role ID | Description | Permissions |
+|---------|-------------|-------------|
+| 1 | Regular User | Create reports, upvote, manage own profile |
+| 2 | Administrator | Moderate reports, manage users, access admin endpoints |
+
+<Note>
+Role IDs are assigned during registration and determine which endpoints a user can access.
+</Note>
+
+## Registration
+
+New users register through the `POST /users/register` endpoint:
+
+<CodeGroup>
+```json Request
+{
+  "email": "user@example.com",
+  "name": "John Doe",
+  "password": "securePassword123",
+  "role_id": "1"
+}
+```
+
+```json Response
+{
+  "user": {
+    "id": "13",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "username": "cool_john842",
+    "image_path": "profile-pictures/default.jpg",
+    "role_id": 1,
+    "created_at": "2025-10-15T19:24:19.000Z",
+    "updated_at": "2025-10-15T19:24:19.000Z"
+  },
+  "settings": {
+    "is_reactions_enabled": 1,
+    "is_review_enabled": 1,
+    "is_reports_enabled": 1,
+    "is_anonymous_preferred": 0
+  }
+}
+```
+</CodeGroup>
+
+### Username Generation
+
+Usernames are automatically generated using a creative algorithm:
+
+```typescript
+// users.service.ts:27
+const adjectives = ['cool', 'fast', 'smart', 'bright', 'happy'];
+
+function generateCreativeUsername(name: string) {
+  const adj = adjectives[secureRandomInt(adjectives.length)];
+  const randomNum = secureRandomInt(1000);
+  return `${adj}_${name.toLowerCase().replace(/\s+/g, '')}${randomNum}`;
+}
+```
+
+This creates usernames like `happy_ximena850` or `smart_john342`.
+
+### Password Security
+
+Passwords are hashed using SHA-256 with a random salt:
+
+```typescript
+// users.service.ts:52
+const salt = Math.random().toString(36).substring(2, 15);
+const hashedPassword = sha256(password + salt);
+```
+
+## Authentication
+
+Users authenticate using email and password:
+
+<CodeGroup>
+```bash Login
+POST /auth/login
+
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+```json Response
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+</CodeGroup>
+
+The login process validates credentials:
+
+```typescript
+// users.service.ts:80
+async login(email: string, password: string): Promise<User> {
+  const user = await this.userRepository.findByEmail(email);
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  if (user.password !== sha256(password + user.salt)) {
+    throw new UnauthorizedException('Invalid password');
+  }
+
+  return user;
+}
+```
+
+## User Profile
+
+### Get Profile
+
+Authenticated users can retrieve their profile:
+
+```bash
+GET /users
+Authorization: Bearer {token}
+```
+
+### Update Profile
+
+Users can update their name, email, username, or profile image:
+
+<CodeGroup>
+```bash Update Profile
+PUT /users
+Authorization: Bearer {token}
+
+{
+  "name": "John Updated",
+  "email": "newemail@example.com",
+  "username": "john_updated",
+  "image_path": "/profile-pictures/new-photo.jpg"
+}
+```
+
+```json Response
+{
+  "id": "13",
+  "email": "newemail@example.com",
+  "name": "John Updated",
+  "username": "john_updated",
+  "image_path": "/profile-pictures/new-photo.jpg",
+  "role_id": 1,
+  "created_at": "2025-10-15T19:24:19.000Z",
+  "updated_at": "2025-10-16T10:30:00.000Z"
+}
+```
+</CodeGroup>
+
+The update logic validates email uniqueness:
+
+```typescript
+// users.service.ts:149
+if (updates.email) {
+  const existingUser = await this.userRepository.findByEmail(updates.email);
+  if (existingUser && existingUser.id !== id) {
+    throw new ConflictException('Email already exists');
+  }
+}
+```
+
+### Change Password
+
+Users can change their password by providing the old password:
+
+```bash
+POST /users/password
+Authorization: Bearer {token}
+
+{
+  "oldPassword": "currentPassword",
+  "newPassword": "newSecurePassword"
+}
+```
+
+### Delete Account
+
+Users can delete their own account:
+
+```bash
+DELETE /users
+Authorization: Bearer {token}
+```
+
+<Warning>
+Deleting an account permanently removes the user and their associated profile picture.
+</Warning>
+
+## User Settings
+
+Users have configurable privacy and notification settings:
+
+| Setting | Description | Values |
+|---------|-------------|--------|
+| `is_reactions_enabled` | Enable/disable receiving reactions on reports | 0 or 1 |
+| `is_review_enabled` | Enable/disable report reviews | 0 or 1 |
+| `is_reports_enabled` | Enable/disable report creation | 0 or 1 |
+| `is_anonymous_preferred` | Default to anonymous when creating reports | 0 or 1 |
+
+### Get Settings
+
+```bash
+GET /users/settings-info
+Authorization: Bearer {token}
+```
+
+Response:
+```json
+{
+  "is_reactions_enabled": 1,
+  "is_review_enabled": 1,
+  "is_reports_enabled": 1,
+  "is_anonymous_preferred": 0
+}
+```
+
+### Update Settings
+
+```bash
+PUT /users/settings-info
+Authorization: Bearer {token}
+
+{
+  "is_reactions_enabled": 0,
+  "is_anonymous_preferred": 1
+}
+```
+
+Settings are updated incrementally - only provided fields are changed:
+
+```typescript
+// user.repository.ts:122
+async updateUserSettings(id: string, settings: UpdateSettingsUserDto) {
+  const entries = Object.entries(settings).filter(
+    ([_, value]) => value !== undefined && value !== null,
+  );
+
+  if (entries.length === 0) {
+    return this.getUserSettings(id);
+  }
+
+  const keys = entries.map(([key]) => key);
+  const values = entries.map(([_, value]) => value);
+  const setClause = keys.map((key) => `${key} = ?`).join(', ');
+
+  const query = `
+    UPDATE user_settings
+    SET ${setClause}
+    WHERE user_id = ?
+  `;
+
+  await this.dbService.getPool().query(query, [...values, id]);
+  return this.getUserSettings(id);
+}
+```
+
+## Anonymity
+
+Users can choose to submit reports anonymously:
+
+- **Per-Report**: Set `is_anonymous: 1` when creating a report
+- **Default Preference**: Set `is_anonymous_preferred: 1` in user settings
+
+<Info>
+Anonymous reports hide the user's identity from public view, but the report is still linked to the user's account internally for moderation purposes.
+</Info>
+
+## User Statistics
+
+Users can view statistics about their reports:
+
+```bash
+GET /users/post-info
+Authorization: Bearer {token}
+```
+
+Response:
+```json
+{
+  "pendiente": 1,
+  "aprobada": 3,
+  "rechazada": 0,
+  "total": 4,
+  "protegidas": 5
+}
+```
+
+This shows:
+- Number of reports by status (pending, approved, rejected)
+- Total reports created
+- Number of upvotes received ("protegidas")
+
+The statistics are calculated with a complex SQL query:
+
+```typescript
+// user.repository.ts:148
+async getPostsInfoByUserId(userId: string): Promise<any> {
+  const sql = `
+    SELECT s.status   AS info_row,
+          COUNT(r.id) AS count
+    FROM status s
+    LEFT JOIN reports r
+          ON r.status_id = s.id
+          AND r.created_by = ?
+    GROUP BY s.id
+
+    UNION ALL
+
+    SELECT 'total', COUNT(*) 
+    FROM reports
+    WHERE created_by = ?
+
+    UNION ALL
+
+    SELECT 'protegidas', COUNT(*) 
+    FROM upvotes
+    WHERE user_id = ?;`;
+
+  const [rows]: any[] = await this.dbService
+    .getPool()
+    .query(sql, [userId, userId, userId]);
+
+  const result = rows.reduce(
+    (acc, row) => {
+      acc[row.info_row] = row.count;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  return result;
+}
+```
+
+## Admin User Management
+
+Administrators have additional endpoints to manage users. See the Admin endpoints in the API Reference:
+
+- `GET /admin/user/list` - Get all users
+- `GET /admin/user/:id` - Get user by ID
+- `PUT /admin/user/:id` - Update any user's information
+- `GET /admin/user/count` - Get total user count
+
+<Note>
+Regular users can only update their own profile, while administrators can modify any user account.
+</Note>

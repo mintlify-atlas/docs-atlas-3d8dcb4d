@@ -1,0 +1,93 @@
+---
+title: 'Update Category'
+api: 'PUT /categories'
+---
+
+Updates an existing category's information. You can modify the name, description, or both.
+
+## Authentication
+
+Requires admin authentication via Bearer token.
+
+## Body Parameters
+
+<ParamField body="id" type="number" required>
+  The unique identifier of the category to update
+</ParamField>
+
+<ParamField body="name" type="string">
+  New name for the category
+</ParamField>
+
+<ParamField body="description" type="string">
+  New description for the category
+</ParamField>
+
+<CodeGroup>
+```bash curl
+curl -X PUT https://api.falconalert.com/categories \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 1,
+    "name": "Electrodomésticos",
+    "description": "Aparatos para el hogar que facilitan las tareas diarias, como refrigeradores, lavadoras o microondas."
+  }'
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="id" type="number">
+  The category's unique identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated name of the category
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Updated description of the category
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "id": 1,
+  "name": "Electrodomésticos",
+  "description": "Aparatos para el hogar que facilitan las tareas diarias, como refrigeradores, lavadoras o microondas."
+}
+```
+
+```json 400 - Category ID Required
+{
+  "message": "Category ID is required for update.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json 400 - No Fields to Update
+{
+  "message": "No fields provided to update",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json 404 - Category Not Found
+{
+  "message": "Category with id 442 not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+```json 400 - Update Failed
+{
+  "message": "Failed to update this field.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+</ResponseExample>

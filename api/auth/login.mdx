@@ -1,0 +1,107 @@
+---
+title: "Login"
+api: "POST /auth/login"
+---
+
+Authenticates a user and returns access and refresh tokens.
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be a valid email format.
+  
+  **Example:** `user@example.com`
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password.
+  
+  **Example:** `password`
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  Login type. Must be either `web` or `mobile`. Determines which role is allowed to access.
+  
+  - `web`: Allows users with role_id 2
+  - `mobile`: Allows users with role_id 1
+  
+  **Example:** `web`
+</ParamField>
+
+## Response
+
+<ResponseField name="accessToken" type="string">
+  JWT access token used for authenticated requests. Valid for 1 hour.
+</ResponseField>
+
+<ResponseField name="refreshToken" type="string">
+  JWT refresh token used to obtain new access tokens. Valid for 7 days.
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.falconalert.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password",
+    "type": "web"
+  }'
+```
+
+## Example Response
+
+<CodeGroup>
+
+```json Success (200)
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsInByb2ZpbGUiOnsiaWQiOiIxIiwiZW1haWwiOiJhcnR1cm9AZ21haWwuY29tIiwibmFtZSI6IkFydHVybyBVdHJpbGxhYSDDiURJVCIsInJvbGVfaWQiOjF9LCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTI5NjAxMX0.ECBWVGu-tXr7Shs9qvg9LMISOXtFQmp3R8C5Uk8cUuw",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTg5NzIxMX0.tA-fCXWmhTzE1YlOXTpftjn_qFzZJoZaCJEPBEYrYZI"
+}
+```
+
+```json Invalid Email (400)
+{
+  "message": [
+    "email must be an email"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json Invalid Password (401)
+{
+  "message": "Invalid password",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json User Not Found (404)
+{
+  "message": "User not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+```json Unauthorized Role (401)
+{
+  "message": "aqui no puedes entrar tontito",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+</CodeGroup>
+
+## Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Login successful. Returns access and refresh tokens. |
+| 400  | Invalid email format or missing required fields. |
+| 401  | Invalid password or user role not allowed for the specified type. |
+| 404  | User with the provided email not found. |

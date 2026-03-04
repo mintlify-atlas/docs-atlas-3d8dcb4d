@@ -1,0 +1,121 @@
+---
+title: 'Create Report'
+api: 'POST /reports'
+---
+
+Creates a new report for a fraudulent or suspicious website.
+
+## Request Body
+
+<ParamField body="title" type="string" required>
+  Title of the report. Should be concise and descriptive.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Detailed description of the reported issue. Explain why the site or resource is suspicious.
+</ParamField>
+
+<ParamField body="report_url" type="string" required>
+  URL of the reported website or resource. Must be a valid URL.
+</ParamField>
+
+<ParamField body="category" type="array" required>
+  Array of category IDs that classify this report. Must contain valid category IDs.
+</ParamField>
+
+<ParamField body="image" type="string" optional>
+  Path to an image file that provides evidence for the report. Images should be uploaded separately.
+</ParamField>
+
+<ParamField body="is_anonymous" type="boolean" optional>
+  Whether the report should be submitted anonymously. Defaults to `false`.
+</ParamField>
+
+## Response
+
+<ResponseField name="reportId" type="number">
+  The unique identifier assigned to the newly created report
+</ResponseField>
+
+<ResponseField name="report_category" type="array">
+  Array of category IDs that were successfully associated with the report
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request POST \
+  --url https://api.falconalert.com/reports \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "title": "Sitio de phishing bancario",
+    "description": "Sitio fraudulento que imita la página de login de un banco para robar credenciales",
+    "report_url": "https://ejemplo-fraudulento.com",
+    "category": [1, 5],
+    "is_anonymous": false
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.falconalert.com/reports', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    title: 'Sitio de phishing bancario',
+    description: 'Sitio fraudulento que imita la página de login de un banco para robar credenciales',
+    report_url: 'https://ejemplo-fraudulento.com',
+    category: [1, 5],
+    is_anonymous: false
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.falconalert.com/reports',
+    json={
+        'title': 'Sitio de phishing bancario',
+        'description': 'Sitio fraudulento que imita la página de login de un banco para robar credenciales',
+        'report_url': 'https://ejemplo-fraudulento.com',
+        'category': [1, 5],
+        'is_anonymous': False
+    }
+)
+
+result = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response (200)
+{
+  "reportId": 48,
+  "report_category": [2, 3]
+}
+```
+
+```json Missing Fields (400)
+{
+  "statusCode": 400,
+  "message": "field should not be empty",
+  "error": "Bad Request"
+}
+```
+
+```json Invalid Category (400)
+{
+  "statusCode": 400,
+  "message": "One or more categories are invalid",
+  "error": "Bad Request"
+}
+```
+
+</ResponseExample>

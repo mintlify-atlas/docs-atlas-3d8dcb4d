@@ -1,0 +1,58 @@
+---
+title: 'List Categories'
+api: 'GET /categories'
+---
+
+Retrieves a list of all available categories in the system. Categories are used to classify reports.
+
+## Authentication
+
+No authentication required for this endpoint.
+
+<CodeGroup>
+```bash curl
+curl -X GET https://api.falconalert.com/categories
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="categories" type="array">
+  Array of category objects
+  
+  <Expandable title="Category Object">
+    <ResponseField name="id" type="number">
+      Unique identifier for the category
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Name of the category
+    </ResponseField>
+    
+    <ResponseField name="description" type="string">
+      Detailed description of the category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": 1,
+    "name": "Electrodomésticos",
+    "description": "Aparatos para el hogar que facilitan las tareas diarias, como refrigeradores, lavadoras o microondas."
+  },
+  {
+    "id": 2,
+    "name": "Muebles",
+    "description": "Artículos para amueblar y decorar espacios, incluyendo mesas, sillas, sofás y camas."
+  },
+  {
+    "id": 3,
+    "name": "Ropa",
+    "description": "Prendas de vestir para diferentes estilos, climas y ocasiones."
+  }
+]
+```
+</ResponseExample>

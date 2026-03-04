@@ -1,0 +1,93 @@
+---
+title: "Verify Token"
+api: "POST /auth/verify"
+---
+
+Verifies the validity of an access token and checks user authentication status.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. Format: `Bearer {accessToken}`
+  
+  **Example:** `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+</ParamField>
+
+## Response
+
+<ResponseField name="message" type="string">
+  Confirmation message indicating token validity.
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.falconalert.com/auth/verify \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsInByb2ZpbGUiOnsiaWQiOiIxIiwiZW1haWwiOiJhcnR1cm9AZ21haWwuY29tIiwibmFtZSI6IkFydHVybyBVdHJpbGxhYSDDiURJVCIsInJvbGVfaWQiOjF9LCJpYXQiOjE3NjEyOTI0MTEsImV4cCI6MTc2MTI5NjAxMX0.ECBWVGu-tXr7Shs9qvg9LMISOXtFQmp3R8C5Uk8cUuw"
+```
+
+## Example Response
+
+<CodeGroup>
+
+```json Success (200)
+{
+  "message": "Token is valid"
+}
+```
+
+```json Invalid Token (401)
+{
+  "message": "Invalid token",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json User Not Authenticated (401)
+{
+  "message": "User not authenticated",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json Profile Not Found (401)
+{
+  "message": "User profile not found",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+```json Role Not Assigned (401)
+{
+  "message": "User role not assigned",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+</CodeGroup>
+
+## Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Token is valid and user is properly authenticated. |
+| 401  | Invalid token, expired token, or authentication issues (missing user profile, missing role). |
+
+## Validation Checks
+
+This endpoint performs the following validation checks:
+
+1. **Token Validity**: Verifies the JWT signature and expiration
+2. **User Authentication**: Confirms the user exists in the request context
+3. **Profile Existence**: Ensures the user profile is present
+4. **Role Assignment**: Validates that a role is assigned to the user
+
+## Use Cases
+
+- Verify token validity before making API requests
+- Check authentication status on application startup
+- Validate tokens in middleware or authentication flows

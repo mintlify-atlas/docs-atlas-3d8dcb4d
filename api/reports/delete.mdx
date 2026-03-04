@@ -1,0 +1,63 @@
+---
+title: 'Delete Report'
+api: 'DELETE /reports/{id}'
+---
+
+Deletes a report by its unique identifier. This action is permanent and cannot be undone.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the report to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the deletion was successful
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request DELETE \
+  --url https://api.falconalert.com/reports/48
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.falconalert.com/reports/48', {
+  method: 'DELETE',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.delete('https://api.falconalert.com/reports/48')
+result = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response (200)
+{
+  "success": true
+}
+```
+
+```json Report Not Found (404)
+{
+  "message": "User with id 442 not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+</ResponseExample>

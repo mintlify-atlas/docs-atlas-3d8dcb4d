@@ -1,0 +1,239 @@
+---
+title: "User Settings"
+api: "GET /users/settings-info"
+description: "Get and update user settings and preferences"
+---
+
+## Get User Settings
+
+### Authentication
+
+This endpoint requires a valid JWT Bearer token.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer <your_access_token>`
+</ParamField>
+
+### Response
+
+<ResponseField name="is_reactions_enabled" type="number">
+  Enable or disable reactions feature
+  
+  - `0` - Disabled
+  - `1` - Enabled
+</ResponseField>
+
+<ResponseField name="is_review_enabled" type="number">
+  Enable or disable review feature
+  
+  - `0` - Disabled
+  - `1` - Enabled
+</ResponseField>
+
+<ResponseField name="is_reports_enabled" type="number">
+  Enable or disable reports feature
+  
+  - `0` - Disabled
+  - `1` - Enabled
+</ResponseField>
+
+<ResponseField name="is_anonymous_reports_enabled" type="number">
+  Enable or disable anonymous reports preference
+  
+  - `0` - Disabled
+  - `1` - Enabled
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL - Get Settings
+curl -X GET https://api.falconalert.com/users/settings-info \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```javascript JavaScript - Get Settings
+const response = await fetch('https://api.falconalert.com/users/settings-info', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+  }
+});
+
+const settings = await response.json();
+```
+
+```python Python - Get Settings
+import requests
+
+url = 'https://api.falconalert.com/users/settings-info'
+headers = {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+}
+
+response = requests.get(url, headers=headers)
+settings = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 - Success
+{
+  "is_reactions_enabled": 1,
+  "is_review_enabled": 1,
+  "is_reports_enabled": 1,
+  "is_anonymous_reports_enabled": 0
+}
+```
+
+</ResponseExample>
+
+---
+
+## Update User Settings
+
+<api>PUT /users/settings-info</api>
+
+Update one or more user settings.
+
+### Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer <your_access_token>`
+</ParamField>
+
+### Request Body
+
+All fields are optional. Include only the settings you want to update.
+
+<ParamField body="is_reactions_enabled" type="number">
+  Enable or disable reactions feature
+  
+  Values: `0` (disabled) or `1` (enabled)
+</ParamField>
+
+<ParamField body="is_review_enabled" type="number">
+  Enable or disable review feature
+  
+  Values: `0` (disabled) or `1` (enabled)
+</ParamField>
+
+<ParamField body="is_reports_enabled" type="number">
+  Enable or disable reports feature
+  
+  Values: `0` (disabled) or `1` (enabled)
+</ParamField>
+
+<ParamField body="is_anonymous_preferred" type="number">
+  Enable or disable anonymous preference
+  
+  Values: `0` (disabled) or `1` (enabled)
+</ParamField>
+
+### Response
+
+<ResponseField name="is_reactions_enabled" type="number">
+  Updated reactions setting
+</ResponseField>
+
+<ResponseField name="is_review_enabled" type="number">
+  Updated review setting
+</ResponseField>
+
+<ResponseField name="is_reports_enabled" type="number">
+  Updated reports setting
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL - Update Settings
+curl -X PUT https://api.falconalert.com/users/settings-info \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "is_reactions_enabled": 0,
+    "is_reports_enabled": 1
+  }'
+```
+
+```javascript JavaScript - Update Settings
+const response = await fetch('https://api.falconalert.com/users/settings-info', {
+  method: 'PUT',
+  headers: {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    is_reactions_enabled: 0,
+    is_reports_enabled: 1
+  })
+});
+
+const updatedSettings = await response.json();
+```
+
+```python Python - Update Settings
+import requests
+
+url = 'https://api.falconalert.com/users/settings-info'
+headers = {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    'Content-Type': 'application/json'
+}
+body = {
+    'is_reactions_enabled': 0,
+    'is_reports_enabled': 1
+}
+
+response = requests.put(url, json=body, headers=headers)
+updated_settings = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 - Success
+{
+  "is_reactions_enabled": 0,
+  "is_review_enabled": 1,
+  "is_reports_enabled": 1
+}
+```
+
+```json 401 - Unauthorized
+{
+  "statusCode": 401,
+  "message": "Unauthorized",
+  "error": "Unauthorized"
+}
+```
+
+```json 404 - User Not Found
+{
+  "statusCode": 404,
+  "message": "User with id 123 not found",
+  "error": "Not Found"
+}
+```
+
+</ResponseExample>
+
+## Error Responses
+
+| Status Code | Description |
+|-------------|-------------|
+| 401 | Unauthorized - Invalid or missing JWT token |
+| 404 | Not Found - User not found |
+
+## Notes
+
+- Settings are user-specific and control feature availability
+- All settings use binary values: `0` (disabled) or `1` (enabled)
+- When updating, only provide the settings you want to change
+- Settings take effect immediately after update

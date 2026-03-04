@@ -1,0 +1,219 @@
+---
+title: "Register User"
+api: "POST /users/register"
+description: "Register a new user in the FalconAlert system"
+---
+
+## Authentication
+
+This endpoint requires a valid JWT Bearer token.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer <your_access_token>`
+</ParamField>
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address
+  
+  Example: `name@domain.com`
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  User's full name
+  
+  Example: `John Doe`
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password (minimum 8 characters)
+  
+  Example: `password123`
+</ParamField>
+
+<ParamField body="role_id" type="string" default="1">
+  User's role ID
+  
+  - `1` - Regular user (default)
+  - `2` - Admin user
+  
+  Example: `1`
+</ParamField>
+
+## Response
+
+<ResponseField name="user" type="object">
+  User information
+  
+  <ResponseField name="id" type="number">
+    Unique user identifier
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    User's full name
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    User's email address
+  </ResponseField>
+  
+  <ResponseField name="username" type="string">
+    Auto-generated username
+  </ResponseField>
+  
+  <ResponseField name="salt" type="string">
+    Password salt for security
+  </ResponseField>
+  
+  <ResponseField name="created_at" type="string">
+    Account creation timestamp (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="updated_at" type="string">
+    Last update timestamp (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="image_path" type="string">
+    Path to user's profile image
+  </ResponseField>
+  
+  <ResponseField name="role_id" type="number">
+    User's role identifier
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="settings" type="array">
+  User settings configuration
+  
+  <ResponseField name="id" type="number">
+    Settings record ID
+  </ResponseField>
+  
+  <ResponseField name="user_id" type="number">
+    Associated user ID
+  </ResponseField>
+  
+  <ResponseField name="is_reactions_enabled" type="number">
+    Whether reactions are enabled (0 or 1)
+  </ResponseField>
+  
+  <ResponseField name="is_review_enabled" type="number">
+    Whether reviews are enabled (0 or 1)
+  </ResponseField>
+  
+  <ResponseField name="is_reports_enabled" type="number">
+    Whether reports are enabled (0 or 1)
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST https://api.falconalert.com/users/register \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "name": "John Doe",
+    "password": "securePassword123",
+    "role_id": "1"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.falconalert.com/users/register', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'john.doe@example.com',
+    name: 'John Doe',
+    password: 'securePassword123',
+    role_id: '1'
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+url = 'https://api.falconalert.com/users/register'
+headers = {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    'Content-Type': 'application/json'
+}
+body = {
+    'email': 'john.doe@example.com',
+    'name': 'John Doe',
+    'password': 'securePassword123',
+    'role_id': '1'
+}
+
+response = requests.post(url, json=body, headers=headers)
+data = response.json()
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 - Success
+{
+  "user": {
+    "id": 2,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "username": "cool_john.527",
+    "salt": "go4fzup9s4m",
+    "created_at": "2025-09-25T14:59:41.000Z",
+    "updated_at": "2025-09-25T14:59:41.000Z",
+    "image_path": "profile-pictures/default.jpg",
+    "role_id": 1
+  },
+  "settings": [
+    {
+      "id": 7,
+      "user_id": 2,
+      "is_reactions_enabled": 1,
+      "is_review_enabled": 1,
+      "is_reports_enabled": 1
+    }
+  ]
+}
+```
+
+```json 400 - Missing Name
+{
+  "message": [
+    "Name should not be empty"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+```json 400 - Missing Email
+{
+  "message": [
+    "Email should not be empty"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+</ResponseExample>
+
+## Error Responses
+
+| Status Code | Description |
+|-------------|-------------|
+| 400 | Bad Request - Missing required fields or validation error |
+| 401 | Unauthorized - Invalid or missing JWT token |

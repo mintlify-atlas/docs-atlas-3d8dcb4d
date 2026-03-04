@@ -1,0 +1,457 @@
+---
+title: 'WebSockets & Real-time Notifications'
+description: 'Real-time communication setup for live report status updates'
+---
+
+## Overview
+
+FalconAlert includes WebSocket support through the `@nestjs/websockets` and `@nestjs/platform-socket.io` packages, enabling real-time notifications for report status changes.
+
+## WebSocket Dependencies
+
+The project includes the necessary packages for WebSocket functionality:
+
+```json package.json
+{
+  "dependencies": {
+    "@nestjs/websockets": "^11.1.6",
+    "@nestjs/platform-socket.io": "^11.1.6"
+  }
+}
+```
+
+## Notification System
+
+While the WebSocket gateway implementation (`reports.gateway.ts`) is currently minimal, the notification system uses REST endpoints with the foundation for real-time delivery.
+
+### Notifications REST API
+
+The notification system is implemented in `src/notifications/` with the following endpoints:
+
+#### Get User Notifications
+
+```typescript
+GET /notifications
+```
+
+**Headers:**
+- `Authorization: Bearer <token>`
+
+**Response:**
+
+```json
+[
+  {
+    "id": 27,
+    "message": "El estado de su reporte titulado Tienda de componentes de computadoras DDCompus ha sido actualizado a Aprobado",
+    "created_at": "2025-10-24T02:21:32.000Z",
+    "created_by": 1,
+    "title": "El estado de su reporte ha cambiado a: Aprobado"
+  },
+  {
+    "id": 26,
+    "message": "El estado de su reporte titulado Página de phishing detectada ha sido actualizado a Rechazado",
+    "created_at": "2025-10-24T02:18:27.000Z",
+    "created_by": 1,
+    "title": "El estado de su reporte ha cambiado a: Rechazado"
+  }
+]
+```
+
+#### Create Notification
+
+```typescript
+POST /notifications
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "El estado de su reporte ha sido actualizado",
+  "message": "Su reporte ha sido actualizado a estado: Aprobado",
+  "created_by": 1
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "Notificación creada correctamente"
+}
+```
+
+### Notification Service
+
+The notification logic in `src/notifications/notifications.service.ts`:
+
+```typescript src/notifications/notifications.service.ts
+import { Injectable } from '@nestjs/common';
+import { NotificationsDTO } from './notifications.controller';
+import { NotificationsRepository } from './notifications.repository';
+import { ConfigurationsRepository } from 'src/configurations/configurations.repositoty';
+
+@Injectable()
+export class NotificationsService {
+  constructor(
+    private readonly notificationsRepository: NotificationsRepository,
+    private readonly configurationsRepository: ConfigurationsRepository
+  ) {}
+
+  async getAllNotifications(id: string) {
+    const userConfig = await this.configurationsRepository.getConfigurationById(id);
+    if (userConfig && userConfig.is_review_enabled === 0) {
+      return []; 
+    }
+    
+    return this.notificationsRepository.getAllNotifications(id);
+  }
+
+  async createNotification(notification: NotificationsDTO) {
+    return this.notificationsRepository.createNotification(notification);
+  }
+}
+```
+
+**Key Features:**
+- Respects user notification preferences (`is_review_enabled`)
+- Returns empty array if notifications are disabled
+- Stores notifications in the database for persistence
+
+## Implementing WebSocket Gateway
+
+To add real-time WebSocket functionality, create a gateway in `src/reports/reports.gateway.ts`:
+
+```typescript src/reports/reports.gateway.ts
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+
+@WebSocketGateway({
+  cors: {
+    origin: '*',
+  },
+})
+export class ReportsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server: Server;
+
+  handleConnection(client: Socket) {
+    console.log(`Client connected: ${client.id}`);
+  }
+
+  handleDisconnect(client: Socket) {
+    console.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('joinRoom')
+  handleJoinRoom(client: Socket, userId: string) {
+    client.join(`user-${userId}`);
+    return { event: 'joinedRoom', data: userId };
+  }
+
+  notifyReportStatusChange(userId: number, notification: any) {
+    this.server.to(`user-${userId}`).emit('reportStatusChanged', notification);
+  }
+}
+```
+
+### Update Reports Module
+
+Add the gateway to `src/reports/reports.module.ts`:
+
+```typescript src/reports/reports.module.ts
+import { Module } from '@nestjs/common';
+import { ReportsController } from './reports.controller';
+import { ReportsService } from './reports.service';
+import { ReportsRepository } from './reports.repository';
+import { ReportsGateway } from './reports.gateway';
+import { ReportsCategoryRepository } from 'src/reports_category/reports-category-repository';
+import { CategoriesRepository } from 'src/categories/categories.repository';
+import { ImagesService } from 'src/images/images.service';
+
+@Module({
+  controllers: [ReportsController],
+  providers: [
+    ReportsService,
+    ReportsRepository,
+    ReportsGateway,  // Add the gateway
+    ReportsCategoryRepository,
+    CategoriesRepository,
+    ImagesService,
+  ],
+  exports: [ReportsService, ReportsRepository],
+})
+export class ReportsModule {}
+```
+
+## Client-side Integration
+
+### JavaScript/TypeScript Client
+
+Connect to the WebSocket server using Socket.IO client:
+
+```typescript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  transports: ['websocket'],
+});
+
+// Join user-specific room
+const userId = '123';
+socket.emit('joinRoom', userId);
+
+// Listen for report status changes
+socket.on('reportStatusChanged', (notification) => {
+  console.log('Report status updated:', notification);
+  // Update UI with notification
+  displayNotification(notification);
+});
+
+// Handle connection events
+socket.on('connect', () => {
+  console.log('Connected to WebSocket server');
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from WebSocket server');
+});
+```
+
+### React Example
+
+```typescript
+import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+
+function NotificationListener({ userId }) {
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const socket = io('http://localhost:3000');
+
+    socket.emit('joinRoom', userId);
+
+    socket.on('reportStatusChanged', (notification) => {
+      setNotifications(prev => [notification, ...prev]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [userId]);
+
+  return (
+    <div>
+      {notifications.map((notif) => (
+        <div key={notif.id} className="notification">
+          <h4>{notif.title}</h4>
+          <p>{notif.message}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Triggering Real-time Notifications
+
+Integrate the gateway into the admin report update flow:
+
+```typescript src/admin/admin.service.ts
+import { Injectable } from '@nestjs/common';
+import { ReportsGateway } from 'src/reports/reports.gateway';
+import { NotificationsService } from 'src/notifications/notifications.service';
+
+@Injectable()
+export class AdminService {
+  constructor(
+    private readonly reportsGateway: ReportsGateway,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  async updateReportStatus(reportId: number, statusId: number) {
+    // Update report in database
+    const report = await this.reportsRepository.updateStatus(reportId, statusId);
+
+    // Create notification
+    const notification = {
+      title: `El estado de su reporte ha cambiado a: ${status}`,
+      message: `El estado de su reporte titulado "${report.title}" ha sido actualizado a ${status}`,
+      created_by: report.created_by,
+      created_at: new Date(),
+    };
+
+    // Save to database
+    await this.notificationsService.createNotification(notification);
+
+    // Emit WebSocket event for real-time delivery
+    this.reportsGateway.notifyReportStatusChange(
+      report.created_by,
+      notification
+    );
+
+    return report;
+  }
+}
+```
+
+## Configuration
+
+### CORS Settings
+
+The gateway includes CORS configuration:
+
+```typescript
+@WebSocketGateway({
+  cors: {
+    origin: '*', // Allow all origins in development
+    // origin: 'https://your-frontend.com', // Restrict in production
+  },
+})
+```
+
+<Warning>
+  In production, restrict CORS to your specific frontend domain instead of using `'*'`.
+</Warning>
+
+### Connection Options
+
+Customize the WebSocket server:
+
+```typescript
+@WebSocketGateway({
+  cors: { origin: '*' },
+  namespace: '/notifications',  // Custom namespace
+  transports: ['websocket'],     // WebSocket only (no polling)
+})
+```
+
+## Room-based Communication
+
+The implementation uses Socket.IO rooms for user-specific notifications:
+
+- Each user joins a room: `user-{userId}`
+- Notifications are sent only to relevant users
+- Prevents notification leaks between users
+
+```typescript
+// User joins their room on connection
+handleJoinRoom(client: Socket, userId: string) {
+  client.join(`user-${userId}`);
+}
+
+// Emit to specific user's room
+notifyReportStatusChange(userId: number, notification: any) {
+  this.server.to(`user-${userId}`).emit('reportStatusChanged', notification);
+}
+```
+
+## Testing WebSockets
+
+### Using Socket.IO Client Tool
+
+1. Install the Socket.IO client:
+
+   ```bash
+   npm install -g socket.io-client
+   ```
+
+2. Test connection:
+
+   ```javascript
+   const io = require('socket.io-client');
+   const socket = io('http://localhost:3000');
+   
+   socket.on('connect', () => {
+     console.log('Connected!');
+     socket.emit('joinRoom', '1');
+   });
+   
+   socket.on('reportStatusChanged', (data) => {
+     console.log('Received:', data);
+   });
+   ```
+
+### Browser Console Testing
+
+```javascript
+const socket = io('http://localhost:3000');
+socket.emit('joinRoom', '1');
+socket.on('reportStatusChanged', console.log);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Authentication">
+    Implement JWT authentication for WebSocket connections:
+
+    ```typescript
+    @WebSocketGateway({
+      cors: { origin: '*' },
+    })
+    export class ReportsGateway implements OnGatewayConnection {
+      handleConnection(client: Socket) {
+        const token = client.handshake.auth.token;
+        if (!this.validateToken(token)) {
+          client.disconnect();
+        }
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Error Handling">
+    Handle disconnections and errors gracefully:
+
+    ```typescript
+    handleDisconnect(client: Socket) {
+      console.log(`Client ${client.id} disconnected`);
+      // Clean up any user-specific data
+    }
+
+    @SubscribeMessage('error')
+    handleError(client: Socket, error: any) {
+      console.error('WebSocket error:', error);
+      client.emit('error', { message: 'An error occurred' });
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Scalability">
+    For production deployments:
+    - Use Redis adapter for multi-server setups
+    - Implement connection limits
+    - Monitor active connections
+    - Use namespaces for different features
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Add Authentication" icon="lock">
+    Secure WebSocket connections with JWT tokens.
+  </Card>
+  <Card title="Redis Integration" icon="database">
+    Scale WebSockets across multiple servers.
+  </Card>
+  <Card title="Typing System" icon="code">
+    Add TypeScript interfaces for all events.
+  </Card>
+  <Card title="Rate Limiting" icon="gauge">
+    Prevent abuse with connection rate limits.
+  </Card>
+</CardGroup>
+
+<Tip>
+  The notification system is designed to work both with and without WebSockets, ensuring backward compatibility.
+</Tip>

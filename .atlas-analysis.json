@@ -1,0 +1,96 @@
+{
+  "projectType": "api-service",
+  "projectName": "FalconAlert API",
+  "projectDescription": "A NestJS-based backend API for fraud reporting and moderation with real-time notifications.",
+  "theme": "aspen",
+  "primaryColor": "#DC2626",
+  "lightColor": "#F87171",
+  "darkColor": "#991B1B",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": ["introduction", "quickstart", "authentication"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["concepts/reports", "concepts/users", "concepts/moderation"]
+          },
+          {
+            "group": "Guides",
+            "pages": ["guides/setup", "guides/database", "guides/file-uploads", "guides/websockets"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": ["api/auth/login", "api/auth/refresh", "api/auth/verify"]
+          },
+          {
+            "group": "Users",
+            "pages": ["api/users/register", "api/users/profile", "api/users/update", "api/users/settings"]
+          },
+          {
+            "group": "Reports",
+            "pages": ["api/reports/list", "api/reports/create", "api/reports/update", "api/reports/delete"]
+          },
+          {
+            "group": "Admin",
+            "pages": ["api/admin/users", "api/admin/user-details"]
+          },
+          {
+            "group": "Categories",
+            "pages": ["api/categories/list", "api/categories/create", "api/categories/update", "api/categories/delete"]
+          },
+          {
+            "group": "Dashboard",
+            "pages": ["api/dashboard/stats"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT-based authentication with access and refresh tokens",
+    "Fraud report creation, management, and moderation",
+    "User registration and profile management",
+    "Real-time WebSocket notifications for reports",
+    "Image upload and storage (S3 and local)",
+    "Admin panel for user and report moderation",
+    "Dashboard with statistics and analytics",
+    "Category-based report organization",
+    "Upvote system for report validation"
+  ],
+  "publicApiSurface": [
+    "POST /auth/login - Authenticate user and get JWT tokens",
+    "POST /auth/refresh - Refresh access token",
+    "POST /auth/verify - Verify token validity",
+    "POST /users/register - Register new user",
+    "GET /users - Get authenticated user profile",
+    "PUT /users - Update user profile",
+    "DELETE /users - Delete user account",
+    "POST /users/report - Create new report",
+    "GET /users/reports - Get user's reports",
+    "POST /users/password - Change password",
+    "GET /reports - List reports with filtering",
+    "POST /reports - Create report",
+    "PUT /reports/{id} - Update report",
+    "DELETE /reports/{id} - Delete report",
+    "GET /reports/count - Count reports by status",
+    "GET /admin/user/{id} - Get user by ID (admin)",
+    "PUT /admin/user/{id} - Update user (admin)",
+    "GET /admin/user/list - List all users (admin)",
+    "GET /admin/user/count - Count total users",
+    "GET /categories - List all categories",
+    "POST /categories - Create category",
+    "PUT /categories - Update category",
+    "DELETE /categories - Delete category",
+    "GET /dashboard - Get dashboard statistics"
+  ]
+}

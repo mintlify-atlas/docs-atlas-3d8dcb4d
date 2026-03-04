@@ -1,0 +1,100 @@
+---
+title: "Get User Report Statistics"
+api: "GET /users/post-info"
+description: "Retrieve statistics about the authenticated user's reports including counts by status"
+---
+
+## Authentication
+
+This endpoint requires a valid JWT Bearer token.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer <your_access_token>`
+</ParamField>
+
+## Response
+
+<ResponseField name="pendiente" type="number">
+  Number of pending reports created by the user
+</ResponseField>
+
+<ResponseField name="aprobada" type="number">
+  Number of approved reports created by the user
+</ResponseField>
+
+<ResponseField name="rechazada" type="number">
+  Number of rejected reports created by the user
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Total number of reports created by the user
+</ResponseField>
+
+<ResponseField name="protegidas" type="number">
+  Total number of people protected by the user's reports (based on upvotes)
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET http://localhost:3000/users/post-info \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/users/post-info', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+  }
+});
+
+const stats = await response.json();
+console.log(stats);
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+}
+
+response = requests.get('http://localhost:3000/users/post-info', headers=headers)
+stats = response.json()
+print(stats)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "pendiente": 1,
+  "aprobada": 3,
+  "rechazada": 0,
+  "total": 4,
+  "protegidas": 5
+}
+```
+
+```json Unauthorized
+{
+  "message": "Invalid token",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+</ResponseExample>
+
+## Use Cases
+
+This endpoint is useful for:
+- Displaying user statistics in a profile dashboard
+- Showing the user's impact (people protected)
+- Tracking report submission activity
+- Gamification features based on approved reports

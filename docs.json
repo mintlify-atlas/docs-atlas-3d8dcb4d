@@ -42,15 +42,15 @@
         "groups": [
           {
             "group": "Authentication",
-            "pages": ["api/auth/login", "api/auth/refresh", "api/auth/verify"]
+            "pages": ["api/auth/login", "api/auth/refresh", "api/auth/verify", "api/auth/profile"]
           },
           {
             "group": "Users",
-            "pages": ["api/users/register", "api/users/profile", "api/users/update", "api/users/settings"]
+            "pages": ["api/users/register", "api/users/profile", "api/users/update", "api/users/settings", "api/users/password", "api/users/post-info"]
           },
           {
             "group": "Reports",
-            "pages": ["api/reports/list", "api/reports/create", "api/reports/update", "api/reports/delete"]
+            "pages": ["api/reports/list", "api/reports/create", "api/reports/update", "api/reports/delete", "api/reports/count"]
           },
           {
             "group": "Admin",

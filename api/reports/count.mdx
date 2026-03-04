@@ -1,0 +1,102 @@
+---
+title: "Count Reports"
+api: "GET /reports/count"
+description: "Get the total number of reports, optionally filtered by status"
+---
+
+## Query Parameters
+
+<ParamField query="status_id" type="string">
+  Filter reports by status (optional)
+  
+  - `"1"` - Pendiente (Pending)
+  - `"2"` - Aprobada (Approved)
+  - `"3"` - Rechazada (Rejected)
+  
+  If not provided, returns the total count of all reports regardless of status.
+</ParamField>
+
+## Response
+
+<ResponseField name="count" type="number">
+  The total number of reports matching the filter criteria
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL - All Reports
+curl -X GET http://localhost:3000/reports/count
+```
+
+```bash cURL - Pending Reports
+curl -X GET "http://localhost:3000/reports/count?status_id=1"
+```
+
+```javascript JavaScript
+// Count all reports
+const allReports = await fetch('http://localhost:3000/reports/count');
+const allData = await allReports.json();
+console.log('Total reports:', allData.count);
+
+// Count pending reports
+const pendingReports = await fetch('http://localhost:3000/reports/count?status_id=1');
+const pendingData = await pendingReports.json();
+console.log('Pending reports:', pendingData.count);
+```
+
+```python Python
+import requests
+
+# Count all reports
+response = requests.get('http://localhost:3000/reports/count')
+print('Total reports:', response.json()['count'])
+
+# Count approved reports
+response = requests.get('http://localhost:3000/reports/count', params={'status_id': '2'})
+print('Approved reports:', response.json()['count'])
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json All Reports
+{
+  "count": 42
+}
+```
+
+```json Pending Reports Only
+{
+  "count": 18
+}
+```
+
+```json Approved Reports Only
+{
+  "count": 20
+}
+```
+
+</ResponseExample>
+
+## Use Cases
+
+This endpoint is useful for:
+- Dashboard statistics and metrics
+- Displaying report counts by status
+- Monitoring system usage and activity
+- Building admin analytics dashboards
+- Progress tracking for moderation workflows
+
+## Status Values
+
+| Status ID | Status Name | Description |
+|-----------|-------------|-------------|
+| 1 | Pendiente | Reports awaiting review |
+| 2 | Aprobada | Reports approved by moderators |
+| 3 | Rechazada | Reports rejected by moderators |
+
+<Tip>
+  This endpoint does not require authentication, making it suitable for public dashboard displays.
+</Tip>

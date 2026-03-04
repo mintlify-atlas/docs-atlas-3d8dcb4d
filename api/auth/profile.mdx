@@ -1,0 +1,122 @@
+---
+title: "Get Auth Profile"
+api: "GET /auth/profile"
+description: "Retrieve the authenticated user's profile from the JWT token payload"
+---
+
+## Authentication
+
+This endpoint requires a valid JWT Bearer token.
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Format: `Bearer <your_access_token>`
+</ParamField>
+
+## Response
+
+The response contains a nested profile object extracted from the JWT token payload.
+
+<ResponseField name="profile" type="object">
+  Container object for the profile data
+  
+  <Expandable title="properties">
+    <ResponseField name="profile" type="object">
+      The actual profile information
+      
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          User's unique identifier
+        </ResponseField>
+        
+        <ResponseField name="email" type="string">
+          User's email address
+        </ResponseField>
+        
+        <ResponseField name="name" type="string">
+          User's full name
+        </ResponseField>
+        
+        <ResponseField name="role_id" type="number">
+          User's role identifier
+          - `1` - Mobile/Regular user
+          - `2` - Web/Admin user
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET http://localhost:3000/auth/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:3000/auth/profile', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+  }
+});
+
+const data = await response.json();
+console.log(data.profile.profile);
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+}
+
+response = requests.get('http://localhost:3000/auth/profile', headers=headers)
+profile = response.json()
+print(profile['profile']['profile'])
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json Success Response
+{
+  "profile": {
+    "profile": {
+      "id": "1",
+      "email": "arturo@gmail.com",
+      "name": "Arturo Utrillaa",
+      "role_id": 1
+    }
+  }
+}
+```
+
+```json Invalid Token
+{
+  "message": "Invalid token",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+</ResponseExample>
+
+## Comparison with GET /users
+
+| Endpoint | Source | Fields Returned | Use Case |
+|----------|--------|-----------------|----------|
+| `GET /auth/profile` | JWT token payload | id, email, name, role_id | Quick profile info from token |
+| `GET /users` | Database query | All user fields including password, salt, image_path, timestamps | Full profile with additional details |
+
+<Note>
+  This endpoint extracts profile information directly from the JWT token payload without querying the database. For the most up-to-date user information (including image_path and timestamps), use `GET /users` instead.
+</Note>
+
+<Tip>
+  Use this endpoint when you need basic user information quickly without a database query, such as for displaying the user's name and email in the UI.
+</Tip>
